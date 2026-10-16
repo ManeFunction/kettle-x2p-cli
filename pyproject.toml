@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "kettle-x2p-cli"
+dynamic = ["version"]
+description = "Local control of the Xiaomi Smart Kettle 2 Pro over your Wi-Fi, no cloud at runtime."
+authors = [
+    { name = "Ilia Petrov-Komotskii", email = "ilia@inkedkettle.art" }
+]
+license = "MIT"
+readme = "README.md"
+requires-python = ">=3.9"
+keywords = ["xiaomi", "mijia", "miot", "miio", "kettle", "smart-home", "home-assistant", "cli"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+    "Environment :: Console",
+    "Topic :: Home Automation",
+]
+dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/ManeFunction/kettle-x2p-cli"
+Repository = "https://github.com/ManeFunction/kettle-x2p-cli"
+Issues = "https://github.com/ManeFunction/kettle-x2p-cli/issues"
+Changelog = "https://github.com/ManeFunction/kettle-x2p-cli/blob/main/CHANGELOG.md"
+
+[project.scripts]
+kettle = "kettle.cli:main"
+
+[tool.setuptools.dynamic]
+version = { attr = "kettle.version" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-dir]
+"" = "src"
