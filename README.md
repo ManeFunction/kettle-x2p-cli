@@ -15,8 +15,8 @@ status: heating, 41 C, fault 0
 ```
 
 Written for the EU model (BHR9107EU, `xiaomi.kettle.v20`, 1.7 L, 1800 W), tested on firmware `2.2.7_0016`.
-It has no dependencies except Python itself. Home Assistant is the long-term goal; for now this is the
-standalone tool and a documented protocol reference ([SPEC.md](https://github.com/ManeFunction/kettle-x2p-cli/blob/main/SPEC.md)).
+It has no dependencies except Python itself. This is the standalone tool and a documented protocol reference ([SPEC.md](https://github.com/ManeFunction/kettle-x2p-cli/blob/main/SPEC.md))
+made just for fun... or not. Setting a kettle right from the Terminal while working is pretty neat, actually :)
 
 ---
 
@@ -162,7 +162,7 @@ The one-time release setup and the first-release steps are in
 
 - [python-miio](https://github.com/rytilahti/python-miio) for documenting the miio protocol.
 - [Xiaomi Cloud Tokens Extractor](https://github.com/PiotrMachowski/Xiaomi-Cloud-Tokens-Extractor) by Piotr Machowski.
-- [miot-spec.org](https://home.miot-spec.com/) for the device specs, and the community
+- [miot-spec.org](https://home.miot-spec.com/) for the device specs, and username-ardrey for
   [Xiaomi Smart Kettle integration for Home Assistant](https://github.com/username-andrey/xiaomi-smart-kettle-ha),
   which shows how this model is started.
 
