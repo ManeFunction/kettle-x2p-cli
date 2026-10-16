@@ -153,8 +153,6 @@ python3 -m venv .venv && .venv/bin/pip install -e .
 The tests run against a fake kettle on the loopback interface that speaks the real wire format; nothing touches a
 real device. The release workflow checks that the tag matches `src/kettle/__init__.py`, builds the package and
 publishes it to PyPI and creates the GitHub release; the Homebrew formula is bumped automatically.
-The one-time release setup and the first-release steps are in
-[packaging/RELEASING.md](https://github.com/ManeFunction/kettle-x2p-cli/blob/main/packaging/RELEASING.md).
 
 ---
 
