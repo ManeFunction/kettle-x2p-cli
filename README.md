@@ -70,6 +70,14 @@ low-water condition only shows up as a fault code. Heat water remotely only when
     - Go to the folder with the code in your Terminal.
     - Run `pip install .` to install `kettle` to your system.
     - Run `kettle --version` to verify the install.
+4) **Ready-to-use Windows binary (for Windows users without Python)**
+    - Download `kettle.exe` from the [GitHub Releases](https://github.com/ManeFunction/kettle-x2p-cli/releases) page.
+    - Since it isn't code-signed, Windows SmartScreen may warn about an unrecognized publisher the first time
+      you run it — click "More info" → "Run anyway" to proceed.
+    - Open Command Prompt or PowerShell, `cd` to the folder with `kettle.exe`, and run `.\kettle.exe --version`
+      to verify it works.
+    - You are perfect, you can use the app with `.\kettle.exe`. The binary is built automatically for each release;
+      CI only checks that it starts and reports the right version, so the Windows build is less tested than macOS and Linux.
 
 Updates arrive with `pip install --upgrade kettle-x2p-cli` or `brew upgrade`. Your saved kettle settings live outside the install
 (`~/.config/kettle/`), so upgrading or reinstalling never loses them. (`pip` may ask you to use a virtual environment or `pipx` on newer

@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-10-18
+### Added
+- A standalone Windows binary, `kettle.exe` (built with Nuitka, not code-signed), is attached to GitHub releases for
+  Windows users without Python.
+
 ## [1.0.0] - 2026-10-16
 ### Added
 - Initial release, available from [PyPI](https://pypi.org/project/kettle-x2p-cli/) (`pip install kettle-x2p-cli`),
