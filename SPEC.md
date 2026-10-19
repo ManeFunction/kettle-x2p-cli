@@ -4,7 +4,7 @@
 URN: `urn:miot-spec-v2:device:kettle:0000A009:xiaomi-v20:1`
 
 > Status: **model confirmed on the device** (`miIO.info` returned `model: xiaomi.kettle.v20`,
-> firmware `2.2.7_0016`, hw `esp32`). `boil`, `warm-to`, `warm-keep`, `cancel` and `status` are all verified on the device.
+> firmware `2.2.7_0016`, hw `esp32`). `boil`, `boil --keep`, `warm`, `warm --keep`, `cancel` and `status` are all verified on the device.
 
 Sources (two agree on all numbers): home.miot-spec.com/spec/xiaomi.kettle.v20 and
 miot-spec.org/miot-spec-v2/instance?type=<URN above>.
@@ -56,13 +56,15 @@ How the device is *started* is not defined by the spec itself; the batch below c
 | command | set_properties (siid,piid = value) |
 |---|---|
 | `boil` | (2,4)=99, (2,5)=false, (2,6)=keep_temp, (3,1)=keep_min, (3,11)=1, (3,13)=`"99,0,<keep_temp>,<keep_min>"` |
-| `warm-to T` | (2,4)=T, (2,5)=false, (2,6)=keep_temp, (3,1)=keep_min, (3,11)=0, (3,12)=`"T,0,<keep_temp>,<keep_min>"` |
-| `warm-keep T M` | (2,4)=T, (2,5)=true, (2,6)=T, (3,1)=M, (3,11)=0, (3,12)=`"T,1,T,M"` |
-| `cancel` | action (3,1) stop-work |
+| `warm T` | (2,4)=T, (2,5)=false, (2,6)=keep_temp, (3,1)=keep_min, (3,11)=0, (3,12)=`"T,0,<keep_temp>,<keep_min>"` |
+| `warm T --keep [[K] H]` | (2,4)=T, (2,5)=true, (2,6)=K, (3,1)=M, (3,11)=0, (3,12)=`"T,1,K,M"` (M = H × 60) |
+| `boil --keep [[K] H]` | (2,4)=99, (2,5)=true, (2,6)=K, (3,1)=M, (3,11)=1, (3,13)=`"99,1,K,M"` (M = H × 60) |
+| `cancel` / `stop` | action (3,1) stop-work |
 | `status` | get (2,1) (2,2) (2,3) (2,4) (2,5) (2,6) (3,7) (3,10) (3,11) |
 
 Validation limits taken from the spec: target 40–99 °C; keep-warm minutes 60–1440 (spec minimum is
-60, so `warm-keep` rejects less than 1 h).
+60, so `--keep` takes hours (fractions allowed, 1–24) and rejects less than 1 h; keep temperature uses the same 40–99 °C limit as the target.
+Bare `--keep` means K = the heating target (99 for `boil`) and 1 h; `--keep H` alone is the time, with K = the heating target.
 
 Open points:
 Which `fault` value means low water is still unknown.

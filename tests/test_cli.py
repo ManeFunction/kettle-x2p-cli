@@ -11,19 +11,81 @@ class HeatingCommandTests(DeviceCase):
         self.assertEqual(self.dev.writes, [[(2, 4, 99), (2, 5, False), (2, 6, 40), (3, 1, 1440),
                                             (3, 11, 1), (3, 13, "99,0,40,1440")]])
 
-    def test_warm_to(self):
-        self.cli("--yes", "warm-to", "70")
+    def test_boil_keep(self):
+        self.cli("--yes", "boil", "--keep", "60", "2")
+        self.assertEqual(self.dev.writes, [[(2, 4, 99), (2, 5, True), (2, 6, 60), (3, 1, 120),
+                                            (3, 11, 1), (3, 13, "99,1,60,120")]])
+
+    def test_warm(self):
+        self.cli("--yes", "warm", "70")
         self.assertEqual(self.dev.writes, [[(2, 4, 70), (2, 5, False), (2, 6, 40), (3, 1, 1440),
                                             (3, 11, 0), (3, 12, "70,0,40,1440")]])
 
     def test_warm_keep(self):
-        self.cli("--yes", "warm-keep", "80", "120")
+        self.cli("--yes", "warm", "80", "-k", "80", "2")
         self.assertEqual(self.dev.writes, [[(2, 4, 80), (2, 5, True), (2, 6, 80), (3, 1, 120),
                                             (3, 11, 0), (3, 12, "80,1,80,120")]])
 
+    def test_keep_temp_may_differ_from_target(self):
+        self.cli("--yes", "warm", "90", "--keep", "55", "1")
+        self.assertEqual(self.dev.writes[0][-1], (3, 12, "90,1,55,60"))
+
+    def test_bare_keep_on_boil_uses_99_and_one_hour(self):
+        self.cli("--yes", "boil", "--keep")
+        self.assertEqual(self.dev.writes, [[(2, 4, 99), (2, 5, True), (2, 6, 99), (3, 1, 60),
+                                            (3, 11, 1), (3, 13, "99,1,99,60")]])
+
+    def test_bare_keep_on_warm_uses_the_target_and_one_hour(self):
+        self.cli("--yes", "warm", "60", "-k")
+        self.assertEqual(self.dev.writes, [[(2, 4, 60), (2, 5, True), (2, 6, 60), (3, 1, 60),
+                                            (3, 11, 0), (3, 12, "60,1,60,60")]])
+
+    def test_a_single_keep_value_is_the_time(self):
+        self.cli("--yes", "warm", "90", "-k", "2")
+        self.assertEqual(self.dev.writes[0][-1], (3, 12, "90,1,90,120"))
+
+    def test_keep_time_takes_fractions_of_an_hour(self):
+        self.cli("--yes", "boil", "-k", "1.5")
+        self.assertEqual(self.dev.writes[0][-1], (3, 13, "99,1,99,90"))
+
+    def test_a_single_keep_value_outside_1_24_hours_is_rejected(self):
+        for argv in (["boil", "-k", "0.5"], ["warm", "90", "-k", "25"], ["boil", "-k", "55"], ["boil", "-k", "0"]):
+            with self.subTest(argv=argv):
+                self.assertEqual(self.cli("--yes", *argv)[0], 1)
+        self.assertEqual(self.dev.writes, [])
+
+    def test_a_single_keep_value_on_boil_keeps_99(self):
+        self.cli("--yes", "boil", "-k", "3")
+        self.assertEqual(self.dev.writes[0][-1], (3, 13, "99,1,99,180"))
+
+    def test_keep_takes_at_most_two_values(self):
+        self.assertEqual(self.cli("--yes", "boil", "-k", "60", "60", "60")[0], 1)
+        self.assertEqual(self.dev.writes, [])
+
+    def test_keep_before_the_command_points_to_the_right_place(self):
+        code, _, err = self.cli("--keep", "boil")
+        self.assertEqual(code, 2)
+        self.assertIn("goes after the command", err)
+
+    def test_help_lists_commands_in_the_documented_order(self):
+        _, out, _ = self.cli("--help")
+        names = ["hello", "setup", "info", "boil", "warm", "cancel", "status", "find", "shell", "provision"]
+        positions = [out.index(f"\n    {n} ") for n in names]
+        self.assertEqual(positions, sorted(positions))
+        flags = [out.index(f"\n  {f}") for f in ("-h, --help", "-v, --version", "-k, --keep", "--ip")]
+        self.assertEqual(flags, sorted(flags))
+
+    def test_old_warm_commands_are_gone(self):
+        for argv in (["warm-to", "70"], ["warm-keep", "80", "120"]):
+            with self.subTest(argv=argv):
+                self.assertEqual(self.cli("--yes", *argv)[0], 2)  # argparse: invalid choice
+        self.assertEqual(self.dev.writes, [])
+
     def test_validation_rejects_without_sending(self):
-        for argv in (["warm-to", "39"], ["warm-to", "100"], ["warm-keep", "80", "59"],
-                     ["warm-keep", "80", "1441"], ["warm-keep", "20", "120"]):
+        for argv in (["warm", "39"], ["warm", "100"], ["warm", "80", "--keep", "80", "0.9"],
+                     ["warm", "80", "--keep", "80", "24.1"], ["warm", "80", "--keep", "20", "2"],
+                     ["boil", "--keep", "80", "0.5"], ["boil", "--keep", "100", "2"],
+                     ["boil", "--keep", "55.5", "2"]):
             with self.subTest(argv=argv):
                 self.assertEqual(self.cli("--yes", *argv)[0], 1)
         self.assertEqual(self.dev.writes, [])
@@ -46,14 +108,17 @@ class HeatingCommandTests(DeviceCase):
         self.assertEqual(self.dev.writes, [])
 
     def test_dry_run_sends_nothing(self):
-        code, out, _ = self.cli("--dry-run", "warm-keep", "80", "120")
+        code, out, _ = self.cli("--dry-run", "warm", "80", "--keep", "80", "2")
         self.assertEqual(code, 0)
         self.assertIn("(3,12) = '80,1,80,120'", out)
         self.assertEqual((self.dev.writes, self.dev.seen), ([], []))
 
-    def test_cancel_sends_stop_work(self):
-        self.cli("cancel")
-        self.assertEqual(self.dev.actions, [(3, 1)])
+    def test_cancel_and_stop_send_stop_work(self):
+        for name in ("cancel", "stop"):
+            with self.subTest(name=name):
+                self.dev.actions.clear()
+                self.cli(name)
+                self.assertEqual(self.dev.actions, [(3, 1)])
 
 
 class ReadCommandTests(DeviceCase):
@@ -72,10 +137,11 @@ class ReadCommandTests(DeviceCase):
         self.assertEqual(oct(self.config_path.stat().st_mode)[-3:], "600")
 
     def test_version(self):
-        with self.assertRaises(SystemExit) as cm, mock.patch("sys.stdout") as out:
-            cli.main(["--version"])
-        self.assertEqual(cm.exception.code, 0)
-        self.assertIn("kettle v", "".join(c.args[0] for c in out.write.call_args_list))
+        for flag in ("--version", "-v"):
+            with self.subTest(flag=flag), self.assertRaises(SystemExit) as cm, mock.patch("sys.stdout") as out:
+                cli.main([flag])
+            self.assertEqual(cm.exception.code, 0)
+            self.assertIn("kettle v", "".join(c.args[0] for c in out.write.call_args_list))
 
 
 class FirstRunTests(DeviceCase):
@@ -93,7 +159,7 @@ class FirstRunTests(DeviceCase):
 
 class ShellTests(DeviceCase):
     def test_shell_keeps_the_session_and_survives_errors(self):
-        lines = iter(["status", "warm-to 20", "bogus", "warm-to 65", "cancel", "quit"])
+        lines = iter(["status", "warm 20", "bogus", "warm 65", "stop", "quit"])
         with mock.patch("builtins.input", lambda prompt="": next(lines)):
             code, out, _ = self.cli("--yes", "shell")
         self.assertEqual(code, 0)

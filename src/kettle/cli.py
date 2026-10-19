@@ -145,19 +145,13 @@ TEMP_MIN, TEMP_MAX = 40, 99          # spec: (2,4) target-temperature
 KEEP_MIN_LO, KEEP_MIN_HI = 60, 1440  # spec: (3,1) keep-warm-time, minutes
 
 
-def boil_items(keep_temp, keep_min) -> list:
-    return [(*TARGET, 99), (*AUTO_KEEP, False), (*KEEP_TEMP, keep_temp), (*KEEP_MIN, keep_min),
-            (*TARGET_MODE, 1), (*BOIL_MODE, f"99,0,{keep_temp},{keep_min}")]
-
-
-def warm_to_items(temp, keep_temp, keep_min) -> list:
-    return [(*TARGET, temp), (*AUTO_KEEP, False), (*KEEP_TEMP, keep_temp), (*KEEP_MIN, keep_min),
-            (*TARGET_MODE, 0), (*HEAT_MODE, f"{temp},0,{keep_temp},{keep_min}")]
-
-
-def warm_keep_items(temp, minutes) -> list:
-    return [(*TARGET, temp), (*AUTO_KEEP, True), (*KEEP_TEMP, temp), (*KEEP_MIN, minutes),
-            (*TARGET_MODE, 0), (*HEAT_MODE, f"{temp},1,{temp},{minutes}")]
+def heat_items(target, boil: bool, keep, keep_temp, keep_min) -> list:
+    """keep is (temp, minutes) for --keep, or None to leave keep-warm off (the kettle's stored values are echoed)."""
+    if keep:
+        keep_temp, keep_min = keep
+    mode, mode_prop = (1, BOIL_MODE) if boil else (0, HEAT_MODE)
+    return [(*TARGET, target), (*AUTO_KEEP, keep is not None), (*KEEP_TEMP, keep_temp), (*KEEP_MIN, keep_min),
+            (*TARGET_MODE, mode), (*mode_prop, f"{target},{int(keep is not None)},{keep_temp},{keep_min}")]
 
 
 def check_temp(temp: int) -> int:
@@ -166,14 +160,16 @@ def check_temp(temp: int) -> int:
     return temp
 
 
-def check_minutes(minutes: int) -> int:
+def check_hours(hours: float) -> int:
+    """Keep-warm time in hours (fractions allowed) -> the kettle's minutes."""
+    minutes = round(hours * 60)
     if not KEEP_MIN_LO <= minutes <= KEEP_MIN_HI:
-        die(f"keep-warm time must be {KEEP_MIN_LO}-{KEEP_MIN_HI} minutes (1-24 h, kettle limits), got {minutes}")
+        die(f"keep-warm time must be {KEEP_MIN_LO // 60}-{KEEP_MIN_HI // 60} hours (kettle limits), got {hours:g}")
     return minutes
 
 
 def start_heating(args, build, label: str) -> None:
-    """Shared flow for boil / warm-to / warm-keep: preflight reads, confirm, write, verify.
+    """Shared flow for boil / warm: preflight reads, confirm, write, verify.
 
     build(keep_temp, keep_min) -> items. On --dry-run nothing is sent (no network at all)."""
     if args.dry_run:
@@ -214,18 +210,31 @@ def start_heating(args, build, label: str) -> None:
               "(also writes on=true) once you are watching the kettle.")
 
 
+def check_keep(keep, target: int):
+    """--keep [[TEMP] TIME] -> (temp, minutes) or None. TIME is in hours. Missing TEMP is the heating target,
+    missing TIME is 1 h."""
+    if keep is None:
+        return None
+    if len(keep) > 2:
+        die("--keep takes at most TEMP and TIME")
+    temp = keep[0] if len(keep) == 2 else target  # a single value is TIME
+    if temp != int(temp):
+        die(f"keep-warm temperature must be a whole number, got {temp:g}")
+    minutes = check_hours(keep[-1]) if keep else KEEP_MIN_LO
+    return check_temp(int(temp)), minutes
+
+
 def cmd_boil(args):
-    start_heating(args, boil_items, "boil")
+    keep = check_keep(args.keep, 99)
+    label = "boil" + (f" and keep warm at {keep[0]} C for {keep[1] / 60:g} h" if keep else "")
+    start_heating(args, lambda kt, km: heat_items(99, True, keep, kt, km), label)
 
 
-def cmd_warm_to(args):
+def cmd_warm(args):
     t = check_temp(args.temp)
-    start_heating(args, lambda kt, km: warm_to_items(t, kt, km), f"warm to {t} C, then stop")
-
-
-def cmd_warm_keep(args):
-    t, m = check_temp(args.temp), check_minutes(args.minutes)
-    start_heating(args, lambda kt, km: warm_keep_items(t, m), f"warm to {t} C and keep warm {m} min")
+    keep = check_keep(args.keep, t)
+    label = f"warm to {t} C" + (f" and keep warm at {keep[0]} C for {keep[1] / 60:g} h" if keep else ", then stop")
+    start_heating(args, lambda kt, km: heat_items(t, False, keep, kt, km), label)
 
 
 def cmd_cancel(args):
@@ -348,7 +357,7 @@ def cmd_shell(args):
             if line in ("quit", "exit", "q"):
                 break
             if line in ("help", "?"):
-                print("boil | warm-to <40-99> | warm-keep <40-99> <60-1440 min> | cancel | status | info")
+                print("boil [-k [[TEMP] TIME]] | warm <40-99> [-k [[TEMP] TIME]] | cancel | stop | status | info")
                 print("add --yes to skip the heating confirmation, --dry-run to only print the RPC")
                 continue
             try:
@@ -370,7 +379,7 @@ def cmd_shell(args):
 
 
 COMMANDS = {"hello": cmd_hello, "info": cmd_info, "status": cmd_status, "boil": cmd_boil,
-            "warm-to": cmd_warm_to, "warm-keep": cmd_warm_keep, "cancel": cmd_cancel,
+            "warm": cmd_warm, "cancel": cmd_cancel, "stop": cmd_cancel,
             "provision": cmd_provision, "find": cmd_find, "shell": cmd_shell, "setup": cmd_setup}
 
 
@@ -378,40 +387,78 @@ def run_command(args) -> None:
     COMMANDS[args.cmd](args)
 
 
+KEEP_HELP = (f"then keep warm at TEMP C ({TEMP_MIN}-{TEMP_MAX}) for TIME hours ({KEEP_MIN_LO // 60}-{KEEP_MIN_HI // 60}, "
+             f"e.g. 1.5); TEMP defaults to the heating target, TIME to {KEEP_MIN_LO // 60}. "
+             f"Without it the kettle stops after heating")
+
+
+class HelpFormatter(argparse.HelpFormatter):
+    def __init__(self, prog, indent_increment=2, max_help_position=28, width=None):
+        # 28 so that `-k, --keep [[TEMP] TIME]` keeps its description on the same line
+        super().__init__(prog, indent_increment, max_help_position, width)
+
+    def _format_args(self, action, default_metavar):
+        # argparse would print the optional pair behind nargs="*" as `[TEMP [TIME ...]]`
+        return "[[TEMP] TIME]" if action.dest == "keep" else super()._format_args(action, default_metavar)
+
+    def _format_usage(self, usage, actions, *args):
+        # the top-level -k is a help-only entry: show it where it works, behind the command
+        keep = [a for a in actions if isinstance(a, KeepAfterCommand)]
+        command = next((a for a in actions if isinstance(a, argparse._SubParsersAction)), None)
+        if not keep or command is None:
+            return super()._format_usage(usage, actions, *args)
+        metavar = command.metavar
+        command.metavar = f"{metavar} [-k [[TEMP] TIME]]"
+        try:
+            return super()._format_usage(usage, [a for a in actions if a not in keep], *args)
+        finally:
+            command.metavar = metavar
+
+
+class KeepAfterCommand(argparse.Action):
+    """Top-level help entry for --keep, which really belongs to boil/warm and goes after the command."""
+    def __call__(self, parser, namespace, values, option_string=None):
+        parser.error(f"{option_string} goes after the command, e.g. `kettle boil {option_string}`")
+
+
 def build_parser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(prog="kettle", description="Local control of the Xiaomi Smart Kettle 2 Pro.")
-    p.add_argument("--version", action="version", version=f"kettle v{version}")
-    p.add_argument("--ip")
+    p = argparse.ArgumentParser(prog="kettle", description="Local control of the Xiaomi Smart Kettle 2 Pro.",
+                                formatter_class=HelpFormatter)
+    p.add_argument("-v", "--version", action="version", version=f"kettle v{version}")
+    p.add_argument("-k", "--keep", action=KeepAfterCommand, nargs="*",
+                   help="boil/warm option, goes after the command")
+    p.add_argument("--ip", help="kettle IP address (default: the one saved by `kettle setup`)")
     p.add_argument("--token", help="32 hex chars")
-    p.add_argument("--timeout", type=float, default=3.0)
+    p.add_argument("--timeout", type=float, default=3.0, help="seconds to wait for a reply (default: %(default)s)")
     p.add_argument("--debug", action="store_true", help="print raw packets and RPC")
     p.add_argument("--dry-run", action="store_true", help="print the RPC instead of sending")
     p.add_argument("--yes", action="store_true", help="skip heating confirmation")
-    p.add_argument("--force-model", action="store_true")
+    p.add_argument("--force-model", action="store_true",
+                   help=f"send commands even if the device is not a {EXPECTED_MODEL} (property IDs may differ)")
     sub = p.add_subparsers(dest="cmd", metavar="command")
+    sub.add_parser("hello", help="raw handshake, shows whether the token is exposed")
     st = sub.add_parser("setup", help="guided first-time setup (token, IP, check)")
     st.add_argument("--subnet", help="e.g. 192.168.1 (default: this computer's /24)")
-    sub.add_parser("hello", help="raw handshake, shows whether the token is exposed")
     sub.add_parser("info", help="miIO.info; saves ip/token/did/model to config")
-    sub.add_parser("status", help="temperature, mode, target, fault, keep-warm")
-    sub.add_parser("cancel", help="stop heating / keep-warm")
-    sub.add_parser("shell", help="interactive session")
     heat = argparse.ArgumentParser(add_help=False)
     heat.add_argument("--set-on", action="store_true", help="also write on=true (2,7)")
-    sub.add_parser("boil", parents=[heat], help="heat to boiling")
-    w = sub.add_parser("warm-to", parents=[heat], help="heat to TEMP C, then stop")
+    heat.add_argument("-k", "--keep", nargs="*", type=float, help=KEEP_HELP)
+    sub.add_parser("boil", parents=[heat], formatter_class=HelpFormatter, help="heat to boiling")
+    w = sub.add_parser("warm", parents=[heat], formatter_class=HelpFormatter, help="heat to TEMP C",
+                       usage=f"{p.prog} warm [-h] temp [--set-on] [-k [[TEMP] TIME]]")
     w.add_argument("temp", type=int, help=f"{TEMP_MIN}-{TEMP_MAX} C")
-    k = sub.add_parser("warm-keep", parents=[heat], help="heat to TEMP C and keep warm for MINUTES")
-    k.add_argument("temp", type=int, help=f"{TEMP_MIN}-{TEMP_MAX} C")
-    k.add_argument("minutes", type=int, help=f"{KEEP_MIN_LO}-{KEEP_MIN_HI}")
+    sub.add_parser("cancel", aliases=["stop"], help="stop heating / keep-warm")
+    sub._choices_actions[-1].metavar = "cancel | stop"  # argparse would list it as `cancel (stop)`
+    sub.add_parser("status", help="temperature, mode, target, fault, keep-warm")
+    f = sub.add_parser("find", help="find the kettle's LAN IP by device id and save it")
+    f.add_argument("--subnet", help="e.g. 192.168.1 (default: the Mac's current /24)")
+    sub.add_parser("shell", help="interactive session")
     pr = sub.add_parser("provision", help="advanced: send Wi-Fi to a kettle in setup mode (see README)")
     pr.add_argument("--ssid")
     pr.add_argument("--uid", type=int, default=0)
     pr.add_argument("--app-params", action="store_true",
                     help="also send config_type/gmt_offset/tz/wifi_config like the Xiaomi Home app")
     pr.add_argument("--cc", default="GB", help="country code for --app-params (app sends the account's)")
-    f = sub.add_parser("find", help="find the kettle's LAN IP by device id and save it")
-    f.add_argument("--subnet", help="e.g. 192.168.1 (default: the Mac's current /24)")
     return p
 
 

@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-10-19
+### Added
+- `stop` as an alias of `cancel`.
+- `-v` as a short form of `--version`.
+- `--keep [[temp] hours]` (`-k`) for `boil` and `warm`: keep the water warm after heating. The time is in hours (1-24,
+  fractions like `1.5` work). The temperature defaults to the heating target (99 °C for `boil`), the time to 1 hour;
+  a single value is the time (`warm 70 -k 2`).
+- `--ip`, `--timeout` and `--force-model` are now described in `--help`.
+
+### Changed
+- **Breaking:** `warm-to <temp>` and `warm-keep <temp> <minutes>` are replaced by a single `warm <temp>`. Without
+  `--keep` the kettle stops after heating; `warm-keep 80 120` is now `warm 80 --keep 2` (the time is in hours).
+- `kettle --help` output was updated.
+
 ## [1.0.1] - 2026-10-18
 ### Added
 - A standalone Windows binary, `kettle.exe` (built with Nuitka, not code-signed), is attached to GitHub releases for

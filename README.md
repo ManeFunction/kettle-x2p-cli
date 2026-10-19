@@ -5,8 +5,8 @@ Terminal: boil, heat to a temperature, keep warm for up to 24 hours, check the s
 your own Wi-Fi, directly to the kettle - no Xiaomi Home app and no cloud connection when you use it.
 
 ```
-$ kettle warm-keep 80 120
-warm to 80 C and keep warm 120 min: water at 41 C, idle, no fault.
+$ kettle warm 80 --keep 2
+warm to 80 C and keep warm at 80 C for 2 h: water at 41 C, idle, no fault.
 About to send set_properties:
   (2,4) = 80
   ...
@@ -25,17 +25,18 @@ made just for fun... or not. Setting a kettle right from the Terminal while work
 | Command | What it does |
 |---|---|
 | `kettle setup` | Guided first-time setup: asks for the token, finds the kettle, checks and saves it. |
-| `kettle boil` | Heats to boiling (99 °C, the kettle's boil mode). |
-| `kettle warm-to <40-99>` | Heats to that temperature in °C, then stops. |
-| `kettle warm-keep <40-99> <60-1440>` | Heats to that temperature and keeps it warm for that many minutes (1-24 h). |
-| `kettle cancel` | Stops heating / keep-warm. |
+| `kettle boil` | Heats to boiling (99 °C, the kettle's boil mode), then stops. |
+| `kettle warm <40-99>` | Heats to that temperature in °C, then stops. |
+| `--keep [[<40-99>] <1-24>]` (`-k`) | Option for `boil` and `warm`: after heating, keep the water warm at that temperature for that many hours (fractions like `1.5` work). Both parts are optional: the temperature defaults to the heating target (99 °C for `boil`), the time to 1 hour, and a single value is the time. |
+| `kettle cancel` (or `stop`) | Stops heating / keep-warm. |
 | `kettle status` | State, current temperature, target, fault, keep-warm settings. |
 | `kettle shell` | Interactive session with the same commands. |
 | `kettle info` | Model, firmware and MAC from the kettle. |
 | `kettle find` | Finds the kettle on the network again if its IP changed. |
 
 Useful flags go before the command: `--dry-run` (print the requests, send nothing), `--yes` (skip the heating
-confirmation), `--debug` (raw packets), `--ip`, `--token`.
+confirmation), `--debug` (raw packets), `--ip`, `--token`, `--force-model` (send commands even to a model other than
+`xiaomi.kettle.v20`; the property IDs may differ there, so only use it if you know they match).
 
 **Safety.** Heating commands refuse to start unless the kettle is a `xiaomi.kettle.v20`, idle, on its base and
 reporting no fault, and a status read that fails or is unclear never starts anything. They print exactly what they
@@ -120,15 +121,20 @@ all control is local. If you re-pair or reset the kettle, the token changes and 
 ```bash
 kettle status                  # what is it doing?
 kettle boil                    # asks for confirmation, then heats to boiling
-kettle warm-to 70              # 70 °C, then stop (green tea)
-kettle warm-keep 85 90         # 85 °C and keep it there for 90 minutes
-kettle cancel                  # stop everything
-kettle --dry-run warm-to 70    # show what would be sent
+kettle warm 70                 # 70 °C, then stop (green tea)
+kettle warm 85 --keep 1.5      # 85 °C and keep it there for 1.5 hours
+kettle warm 85 -k 60 2         # 85 °C, then keep it at 60 °C for 2 hours
+kettle warm 60 --keep          # 60 °C and keep 60 °C for the default hour
+kettle boil -k 60 2            # boil, then keep at 60 °C for 2 hours
+kettle boil -k 3               # boil and keep 99 °C for 3 hours
+kettle boil --keep             # boil and keep 99 °C for an hour
+kettle stop                    # stop everything (same as cancel)
+kettle --dry-run warm 70       # show what would be sent
 kettle shell                   # keep a session open
 ```
 
-In `kettle shell` you type the same commands without the `kettle` prefix (`boil`, `warm-to 70`, `status`, `quit`).
-Keep-warm time is limited by the kettle to 60-1440 minutes, and the target temperature to 40-99 °C; anything
+In `kettle shell` you type the same commands without the `kettle` prefix (`boil`, `warm 70`, `status`, `stop`, `quit`).
+Keep-warm time is limited by the kettle to 1-24 hours, and the target temperature to 40-99 °C; anything
 else is rejected before it is sent.
 
 ### Troubleshooting
