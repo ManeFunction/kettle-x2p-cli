@@ -95,6 +95,7 @@ class DeviceCase(unittest.TestCase):
 
         for patcher in (mock.patch.object(config, "CONFIG_PATH", self.config_path),
                         mock.patch.object(cli.time, "sleep", lambda s: None),
+                        mock.patch.object(cli, "DEFAULT_TIMEOUT", 1.0),
                         mock.patch.object(miio.MiioClient, "__init__", init)):
             patcher.start()
             self.addCleanup(patcher.stop)
@@ -105,7 +106,7 @@ class DeviceCase(unittest.TestCase):
         code = 0
         with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
             try:
-                cli.main(["--ip", "127.0.0.1", "--token", TOKEN.hex(), "--timeout", "1", *argv])
+                cli.main(["--ip", "127.0.0.1", "--token", TOKEN.hex(), *argv])
             except SystemExit as e:
                 code = e.code if isinstance(e.code, int) else 1
         return code, out.getvalue(), err.getvalue()

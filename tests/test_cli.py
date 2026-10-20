@@ -7,59 +7,59 @@ from helpers import DID, TOKEN, DeviceCase, FakeDevice, cli, config
 
 class HeatingCommandTests(DeviceCase):
     def test_boil_writes_the_spec_batch(self):
-        self.assertEqual(self.cli("--yes", "boil")[0], 0)
+        self.assertEqual(self.cli("boil", "--yes")[0], 0)
         self.assertEqual(self.dev.writes, [[(2, 4, 99), (2, 5, False), (2, 6, 40), (3, 1, 1440),
                                             (3, 11, 1), (3, 13, "99,0,40,1440")]])
 
     def test_boil_keep(self):
-        self.cli("--yes", "boil", "--keep", "60", "2")
+        self.cli("boil", "--keep", "60", "2", "--yes")
         self.assertEqual(self.dev.writes, [[(2, 4, 99), (2, 5, True), (2, 6, 60), (3, 1, 120),
                                             (3, 11, 1), (3, 13, "99,1,60,120")]])
 
     def test_warm(self):
-        self.cli("--yes", "warm", "70")
+        self.cli("warm", "70", "--yes")
         self.assertEqual(self.dev.writes, [[(2, 4, 70), (2, 5, False), (2, 6, 40), (3, 1, 1440),
                                             (3, 11, 0), (3, 12, "70,0,40,1440")]])
 
     def test_warm_keep(self):
-        self.cli("--yes", "warm", "80", "-k", "80", "2")
+        self.cli("warm", "80", "-k", "80", "2", "--yes")
         self.assertEqual(self.dev.writes, [[(2, 4, 80), (2, 5, True), (2, 6, 80), (3, 1, 120),
                                             (3, 11, 0), (3, 12, "80,1,80,120")]])
 
     def test_keep_temp_may_differ_from_target(self):
-        self.cli("--yes", "warm", "90", "--keep", "55", "1")
+        self.cli("warm", "90", "--keep", "55", "1", "--yes")
         self.assertEqual(self.dev.writes[0][-1], (3, 12, "90,1,55,60"))
 
     def test_bare_keep_on_boil_uses_99_and_one_hour(self):
-        self.cli("--yes", "boil", "--keep")
+        self.cli("boil", "--keep", "--yes")
         self.assertEqual(self.dev.writes, [[(2, 4, 99), (2, 5, True), (2, 6, 99), (3, 1, 60),
                                             (3, 11, 1), (3, 13, "99,1,99,60")]])
 
     def test_bare_keep_on_warm_uses_the_target_and_one_hour(self):
-        self.cli("--yes", "warm", "60", "-k")
+        self.cli("warm", "60", "-k", "--yes")
         self.assertEqual(self.dev.writes, [[(2, 4, 60), (2, 5, True), (2, 6, 60), (3, 1, 60),
                                             (3, 11, 0), (3, 12, "60,1,60,60")]])
 
     def test_a_single_keep_value_is_the_time(self):
-        self.cli("--yes", "warm", "90", "-k", "2")
+        self.cli("warm", "90", "-k", "2", "--yes")
         self.assertEqual(self.dev.writes[0][-1], (3, 12, "90,1,90,120"))
 
     def test_keep_time_takes_fractions_of_an_hour(self):
-        self.cli("--yes", "boil", "-k", "1.5")
+        self.cli("boil", "-k", "1.5", "--yes")
         self.assertEqual(self.dev.writes[0][-1], (3, 13, "99,1,99,90"))
 
     def test_a_single_keep_value_outside_1_24_hours_is_rejected(self):
         for argv in (["boil", "-k", "0.5"], ["warm", "90", "-k", "25"], ["boil", "-k", "55"], ["boil", "-k", "0"]):
             with self.subTest(argv=argv):
-                self.assertEqual(self.cli("--yes", *argv)[0], 1)
+                self.assertEqual(self.cli(*argv, "--yes")[0], 1)
         self.assertEqual(self.dev.writes, [])
 
     def test_a_single_keep_value_on_boil_keeps_99(self):
-        self.cli("--yes", "boil", "-k", "3")
+        self.cli("boil", "-k", "3", "--yes")
         self.assertEqual(self.dev.writes[0][-1], (3, 13, "99,1,99,180"))
 
     def test_keep_takes_at_most_two_values(self):
-        self.assertEqual(self.cli("--yes", "boil", "-k", "60", "60", "60")[0], 1)
+        self.assertEqual(self.cli("boil", "-k", "60", "60", "60", "--yes")[0], 1)
         self.assertEqual(self.dev.writes, [])
 
     def test_keep_before_the_command_points_to_the_right_place(self):
@@ -72,13 +72,37 @@ class HeatingCommandTests(DeviceCase):
         names = ["hello", "setup", "info", "boil", "warm", "cancel", "status", "find", "shell", "provision"]
         positions = [out.index(f"\n    {n} ") for n in names]
         self.assertEqual(positions, sorted(positions))
-        flags = [out.index(f"\n  {f}") for f in ("-h, --help", "-v, --version", "-k, --keep", "--ip")]
+        flags = [out.index(f"\n  {f}") for f in ("-h, --help", "-v, --version", "--ip", "--token", "--force-model",
+                                                 "--timeout", "--debug", "--dry-run", "--yes", "-k, --keep")]
         self.assertEqual(flags, sorted(flags))
+        self.assertLess(out.index("--force-model"), out.index("command options"))
+
+    def test_usage_shows_command_options_behind_the_command(self):
+        _, out, _ = self.cli("--help")
+        usage = " ".join(out.split("\n\n")[0].split())
+        self.assertIn("command [--timeout TIMEOUT] [--debug] [--dry-run] [--yes] [-k [[TEMP] TIME]] ...", usage)
+        self.assertNotIn("[--debug] [--dry-run] [--yes] [--force-model]", usage)
+        _, out, _ = self.cli("warm", "--help")
+        usage = " ".join(out.split("\n\n")[0].split())
+        self.assertIn("warm [-h] temp [--timeout TIMEOUT] [--debug] [--dry-run] [--yes] [--set-on] [-k [[TEMP] TIME]]", usage)
+
+    def test_command_options_before_the_command_point_to_the_right_place(self):
+        for argv in (["--yes", "boil"], ["--dry-run", "boil"], ["--debug", "status"], ["--timeout", "5", "status"]):
+            with self.subTest(argv=argv):
+                code, _, err = self.cli(*argv)
+                self.assertEqual(code, 2)
+                self.assertIn("goes after the command", err)
+
+    def test_timeout_and_debug_go_after_the_command(self):
+        code, out, _ = self.cli("status", "--timeout", "2", "--debug")
+        self.assertEqual(code, 0)
+        self.assertIn("[miio] request", out)  # --debug took effect
+        self.assertIn("temperature  : 25 C", out)
 
     def test_old_warm_commands_are_gone(self):
         for argv in (["warm-to", "70"], ["warm-keep", "80", "120"]):
             with self.subTest(argv=argv):
-                self.assertEqual(self.cli("--yes", *argv)[0], 2)  # argparse: invalid choice
+                self.assertEqual(self.cli(*argv, "--yes")[0], 2)  # argparse: invalid choice
         self.assertEqual(self.dev.writes, [])
 
     def test_validation_rejects_without_sending(self):
@@ -87,19 +111,19 @@ class HeatingCommandTests(DeviceCase):
                      ["boil", "--keep", "80", "0.5"], ["boil", "--keep", "100", "2"],
                      ["boil", "--keep", "55.5", "2"]):
             with self.subTest(argv=argv):
-                self.assertEqual(self.cli("--yes", *argv)[0], 1)
+                self.assertEqual(self.cli(*argv, "--yes")[0], 1)
         self.assertEqual(self.dev.writes, [])
 
     def test_safety_refusals(self):
         for props in ({(2, 2): 2}, {(3, 7): True}, {(2, 1): 1}):  # fault, lifted, not idle
             with self.subTest(props=props):
                 self.dev.props.update(props)
-                self.assertEqual(self.cli("--yes", "boil")[0], 1)
+                self.assertEqual(self.cli("boil", "--yes")[0], 1)
         self.assertEqual(self.dev.writes, [])
 
     def test_wrong_model_is_refused(self):
         self.dev.model = "something.else"
-        self.assertEqual(self.cli("--yes", "boil")[0], 1)
+        self.assertEqual(self.cli("boil", "--yes")[0], 1)
         self.assertEqual(self.dev.writes, [])
 
     def test_needs_yes_without_a_terminal(self):
@@ -108,7 +132,7 @@ class HeatingCommandTests(DeviceCase):
         self.assertEqual(self.dev.writes, [])
 
     def test_dry_run_sends_nothing(self):
-        code, out, _ = self.cli("--dry-run", "warm", "80", "--keep", "80", "2")
+        code, out, _ = self.cli("warm", "80", "--keep", "80", "2", "--dry-run")
         self.assertEqual(code, 0)
         self.assertIn("(3,12) = '80,1,80,120'", out)
         self.assertEqual((self.dev.writes, self.dev.seen), ([], []))
@@ -161,7 +185,7 @@ class ShellTests(DeviceCase):
     def test_shell_keeps_the_session_and_survives_errors(self):
         lines = iter(["status", "warm 20", "bogus", "warm 65", "stop", "quit"])
         with mock.patch("builtins.input", lambda prompt="": next(lines)):
-            code, out, _ = self.cli("--yes", "shell")
+            code, out, _ = self.cli("shell", "--yes")
         self.assertEqual(code, 0)
         self.assertEqual([w[0][2] for w in self.dev.writes], [65])  # 20 was rejected
         self.assertEqual(self.dev.actions, [(3, 1)])

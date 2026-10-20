@@ -34,9 +34,10 @@ made just for fun... or not. Setting a kettle right from the Terminal while work
 | `kettle info` | Model, firmware and MAC from the kettle. |
 | `kettle find` | Finds the kettle on the network again if its IP changed. |
 
-Useful flags go before the command: `--dry-run` (print the requests, send nothing), `--yes` (skip the heating
-confirmation), `--debug` (raw packets), `--ip`, `--token`, `--force-model` (send commands even to a model other than
-`xiaomi.kettle.v20`; the property IDs may differ there, so only use it if you know they match).
+Options after the command: `--dry-run` (print the requests, send nothing), `--yes` (skip the heating confirmation),
+`--debug` (raw packets), `--timeout` (seconds to wait for a reply). Options before it: `--ip`, `--token`,
+`--force-model` (send commands even to a model other than `xiaomi.kettle.v20`; the property IDs may differ there, so only
+use it if you know they match).
 
 **Safety.** Heating commands refuse to start unless the kettle is a `xiaomi.kettle.v20`, idle, on its base and
 reporting no fault, and a status read that fails or is unclear never starts anything. They print exactly what they
@@ -129,7 +130,7 @@ kettle boil -k 60 2            # boil, then keep at 60 °C for 2 hours
 kettle boil -k 3               # boil and keep 99 °C for 3 hours
 kettle boil --keep             # boil and keep 99 °C for an hour
 kettle stop                    # stop everything (same as cancel)
-kettle --dry-run warm 70       # show what would be sent
+kettle warm 70 --dry-run       # show what would be sent
 kettle shell                   # keep a session open
 ```
 
