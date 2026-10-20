@@ -401,6 +401,12 @@ class HelpFormatter(argparse.HelpFormatter):
         # argparse would print the optional pair behind nargs="*" as `[TEMP [TIME ...]]`
         return "[[TEMP] TIME]" if action.dest == "keep" else super()._format_args(action, default_metavar)
 
+    def _format_action_invocation(self, action):
+        # Python < 3.13 repeats the metavar after every option string (`-k [..], --keep [..]`)
+        if action.dest == "keep" and action.option_strings:
+            return f"{', '.join(action.option_strings)} {self._format_args(action, None)}"
+        return super()._format_action_invocation(action)
+
     def _format_usage(self, usage, actions, *args):
         # the top-level -k is a help-only entry: show it where it works, behind the command
         keep = [a for a in actions if isinstance(a, KeepAfterCommand)]
