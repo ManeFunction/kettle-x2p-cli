@@ -73,7 +73,7 @@ class HeatingCommandTests(DeviceCase):
         positions = [out.index(f"\n    {n} ") for n in names]
         self.assertEqual(positions, sorted(positions))
         flags = [out.index(f"\n  {f}") for f in ("-h, --help", "-v, --version", "--ip", "--token", "--force-model",
-                                                 "--timeout", "--debug", "--dry-run", "--yes", "-k, --keep")]
+                                                 "-k, --keep", "--yes", "--dry-run", "--timeout", "--debug")]
         self.assertEqual(flags, sorted(flags))
         self.assertLess(out.index("\ncall options"), out.index("\n  --ip"))
         self.assertLess(out.index("\n  --force-model"), out.index("\ncommand options"))
@@ -82,18 +82,18 @@ class HeatingCommandTests(DeviceCase):
     def test_command_help_lists_its_options_in_the_command_block(self):
         _, out, _ = self.cli("warm", "--help")
         block = out[out.index("command options"):]
-        for flag in ("--timeout", "--debug", "--dry-run", "--yes", "--set-on", "-k, --keep"):
+        for flag in ("-k, --keep", "--yes", "--dry-run", "--timeout", "--debug", "--set-on"):
             self.assertIn(flag, block)
         self.assertNotIn("--ip", out)
 
     def test_usage_shows_command_options_behind_the_command(self):
         _, out, _ = self.cli("--help")
         usage = " ".join(out.split("\n\n")[0].split())
-        self.assertIn("command [--timeout TIMEOUT] [--debug] [--dry-run] [--yes] [--keep [[TEMP] TIME]] ...", usage)
-        self.assertNotIn("[--debug] [--dry-run] [--yes] [--force-model]", usage)
+        self.assertIn("command [--keep [[TEMP] TIME]] [--yes] [--dry-run] [--timeout TIMEOUT] [--debug] ...", usage)
+        self.assertNotIn("[--yes] [--dry-run] [--timeout TIMEOUT] [--debug] [--force-model]", usage)
         _, out, _ = self.cli("warm", "--help")
         usage = " ".join(out.split("\n\n")[0].split())
-        self.assertIn("warm [--help] temp [--timeout TIMEOUT] [--debug] [--dry-run] [--yes] [--set-on] [--keep [[TEMP] TIME]]", usage)
+        self.assertIn("warm [--help] temp [--keep [[TEMP] TIME]] [--yes] [--dry-run] [--timeout TIMEOUT] [--debug] [--set-on]", usage)
 
     def test_usage_on_error_uses_long_options(self):
         for argv in (["bogus"], ["warm"], ["--yes", "boil"]):

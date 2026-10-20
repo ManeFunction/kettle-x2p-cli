@@ -396,17 +396,17 @@ KEEP_HELP = (f"then keep warm at TEMP C ({TEMP_MIN}-{TEMP_MAX}) for TIME hours (
 DEFAULT_TIMEOUT = 3.0
 # options that go after the command: name -> (option strings, usage example, add_argument kwargs)
 COMMAND_OPTIONS = {
+    "keep": (("-k", "--keep"), "boil --keep", dict(nargs="*", type=float, help=KEEP_HELP)),
+    "yes": (("--yes",), "boil --yes", dict(action="store_true", help="skip heating confirmation")),
+    "dry_run": (("--dry-run",), "warm 70 --dry-run",
+                dict(action="store_true", help="print the RPC instead of sending")),
     "timeout": (("--timeout",), "status --timeout 5",
                 dict(type=float, help=f"seconds to wait for a reply (default: {DEFAULT_TIMEOUT:g})")),
     "debug": (("--debug",), "status --debug", dict(action="store_true", help="print raw packets and RPC")),
-    "dry_run": (("--dry-run",), "warm 70 --dry-run",
-                dict(action="store_true", help="print the RPC instead of sending")),
-    "yes": (("--yes",), "boil --yes", dict(action="store_true", help="skip heating confirmation")),
-    "keep": (("-k", "--keep"), "boil --keep", dict(nargs="*", type=float, help=KEEP_HELP)),
     "set_on": (("--set-on",), "boil --set-on", dict(action="store_true", help="also write on=true (2,7)")),
 }
 # these may also be given to `kettle shell` and then apply to every command typed in it
-SESSION_OPTIONS = ("timeout", "debug", "dry_run", "yes")
+SESSION_OPTIONS = ("yes", "dry_run", "timeout", "debug")
 
 
 class HelpFormatter(argparse.HelpFormatter):
@@ -507,13 +507,13 @@ def build_parser() -> argparse.ArgumentParser:
     info = sub.add_parser("info", help="miIO.info; saves ip/token/did/model to config")
     add_command_options(info, "timeout", "debug")
     boil = sub.add_parser("boil", help="heat to boiling")
-    add_command_options(boil, "timeout", "debug", "dry_run", "yes", "set_on", "keep")
+    add_command_options(boil, "keep", "yes", "dry_run", "timeout", "debug", "set_on")
     w = sub.add_parser("warm", help="heat to TEMP C")
     w.add_argument("temp", type=int, help=f"{TEMP_MIN}-{TEMP_MAX} C")
-    add_command_options(w, "timeout", "debug", "dry_run", "yes", "set_on", "keep")
+    add_command_options(w, "keep", "yes", "dry_run", "timeout", "debug", "set_on")
     cancel = sub.add_parser("cancel", aliases=["stop"], help="stop heating / keep-warm")
     sub._choices_actions[-1].metavar = "cancel | stop"  # argparse would list it as `cancel (stop)`
-    add_command_options(cancel, "timeout", "debug", "dry_run")
+    add_command_options(cancel, "dry_run", "timeout", "debug")
     status = sub.add_parser("status", help="temperature, mode, target, fault, keep-warm")
     add_command_options(status, "timeout", "debug")
     f = sub.add_parser("find", help="find the kettle's LAN IP by device id and save it")
@@ -526,7 +526,7 @@ def build_parser() -> argparse.ArgumentParser:
     pr.add_argument("--app-params", action="store_true",
                     help="also send config_type/gmt_offset/tz/wifi_config like the Xiaomi Home app")
     pr.add_argument("--cc", default="GB", help="country code for --app-params (app sends the account's)")
-    add_command_options(pr, "timeout", "debug", "dry_run")
+    add_command_options(pr, "dry_run", "timeout", "debug")
     return p
 
 
