@@ -58,9 +58,6 @@ venv.bak/
 .dmypy.json
 dmypy.json
 
-# MacOS trash
-.DS_Store
-
 # PyCharm
 .idea/
 
