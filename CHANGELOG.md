@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
+
+## [1.2.0] - 2026-10-20
 ### Changed
 - **Breaking:** `--timeout`, `--debug`, `--dry-run` and `--yes` now go after the command, like `--keep`
   (`kettle warm 70 --dry-run`, not `kettle --dry-run warm 70`). Before the command they are rejected with a hint.
