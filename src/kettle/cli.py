@@ -425,7 +425,7 @@ class HelpFormatter(argparse.HelpFormatter):
         return super()._format_action_invocation(action)
 
     def _usage_part(self, action) -> str:
-        flag = action.option_strings[0]
+        flag = action.option_strings[-1]  # the long form
         part = flag if action.nargs == 0 else f"{flag} {self._format_args(action, action.dest.upper())}"
         return f"[{part}]"
 

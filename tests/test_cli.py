@@ -80,11 +80,19 @@ class HeatingCommandTests(DeviceCase):
     def test_usage_shows_command_options_behind_the_command(self):
         _, out, _ = self.cli("--help")
         usage = " ".join(out.split("\n\n")[0].split())
-        self.assertIn("command [--timeout TIMEOUT] [--debug] [--dry-run] [--yes] [-k [[TEMP] TIME]] ...", usage)
+        self.assertIn("command [--timeout TIMEOUT] [--debug] [--dry-run] [--yes] [--keep [[TEMP] TIME]] ...", usage)
         self.assertNotIn("[--debug] [--dry-run] [--yes] [--force-model]", usage)
         _, out, _ = self.cli("warm", "--help")
         usage = " ".join(out.split("\n\n")[0].split())
-        self.assertIn("warm [-h] temp [--timeout TIMEOUT] [--debug] [--dry-run] [--yes] [--set-on] [-k [[TEMP] TIME]]", usage)
+        self.assertIn("warm [--help] temp [--timeout TIMEOUT] [--debug] [--dry-run] [--yes] [--set-on] [--keep [[TEMP] TIME]]", usage)
+
+    def test_usage_on_error_uses_long_options(self):
+        for argv in (["bogus"], ["warm"], ["--yes", "boil"]):
+            with self.subTest(argv=argv):
+                _, _, err = self.cli(*argv)
+                usage = err.split("\n\n")[0]
+                self.assertIn("[--help]", usage)
+                self.assertNotRegex(usage, r"\[-[a-zA-Z]\b")
 
     def test_command_options_before_the_command_point_to_the_right_place(self):
         for argv in (["--yes", "boil"], ["--dry-run", "boil"], ["--debug", "status"], ["--timeout", "5", "status"]):
