@@ -75,7 +75,16 @@ class HeatingCommandTests(DeviceCase):
         flags = [out.index(f"\n  {f}") for f in ("-h, --help", "-v, --version", "--ip", "--token", "--force-model",
                                                  "--timeout", "--debug", "--dry-run", "--yes", "-k, --keep")]
         self.assertEqual(flags, sorted(flags))
-        self.assertLess(out.index("--force-model"), out.index("command options"))
+        self.assertLess(out.index("\ncall options"), out.index("\n  --ip"))
+        self.assertLess(out.index("\n  --force-model"), out.index("\ncommand options"))
+        self.assertLess(out.index("\ncommand options"), out.index("\n  --timeout"))
+
+    def test_command_help_lists_its_options_in_the_command_block(self):
+        _, out, _ = self.cli("warm", "--help")
+        block = out[out.index("command options"):]
+        for flag in ("--timeout", "--debug", "--dry-run", "--yes", "--set-on", "-k, --keep"):
+            self.assertIn(flag, block)
+        self.assertNotIn("--ip", out)
 
     def test_usage_shows_command_options_behind_the_command(self):
         _, out, _ = self.cli("--help")

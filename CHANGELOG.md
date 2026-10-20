@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - **Breaking:** `--timeout`, `--debug`, `--dry-run` and `--yes` now go after the command, like `--keep`
   (`kettle warm 70 --dry-run`, not `kettle --dry-run warm 70`). Before the command they are rejected with a hint.
   In `kettle shell` they can be given once for the whole session (`kettle shell --yes`) or per command.
+- `--help` and the README list the options in two blocks: call options (before the command: `--ip`, `--token`,
+  `--force-model`) and command options (after it: `--keep`, `--yes`, `--dry-run`, `--timeout`, `--debug`).
 - The `usage:` line shows them behind the command too, and spells every option in its long form (`--help`, not `-h`).
 
 ## [1.1.0] - 2026-10-19

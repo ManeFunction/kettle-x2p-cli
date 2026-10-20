@@ -27,17 +27,36 @@ made just for fun... or not. Setting a kettle right from the Terminal while work
 | `kettle setup` | Guided first-time setup: asks for the token, finds the kettle, checks and saves it. |
 | `kettle boil` | Heats to boiling (99 °C, the kettle's boil mode), then stops. |
 | `kettle warm <40-99>` | Heats to that temperature in °C, then stops. |
-| `--keep [[<40-99>] <1-24>]` (`-k`) | Option for `boil` and `warm`: after heating, keep the water warm at that temperature for that many hours (fractions like `1.5` work). Both parts are optional: the temperature defaults to the heating target (99 °C for `boil`), the time to 1 hour, and a single value is the time. |
 | `kettle cancel` (or `stop`) | Stops heating / keep-warm. |
 | `kettle status` | State, current temperature, target, fault, keep-warm settings. |
 | `kettle shell` | Interactive session with the same commands. |
 | `kettle info` | Model, firmware and MAC from the kettle. |
 | `kettle find` | Finds the kettle on the network again if its IP changed. |
 
-Options after the command: `--dry-run` (print the requests, send nothing), `--yes` (skip the heating confirmation),
-`--debug` (raw packets), `--timeout` (seconds to wait for a reply). Options before it: `--ip`, `--token`,
-`--force-model` (send commands even to a model other than `xiaomi.kettle.v20`; the property IDs may differ there, so only
-use it if you know they match).
+### Call options
+
+Go right after `kettle`, before the command.
+
+| Option | What it does |
+|---|---|
+| `--ip <address>` | Kettle IP address (default: the one saved by `kettle setup`). |
+| `--token <32 hex>` | Kettle token (default: the saved one). |
+| `--force-model` | Send commands even to a model other than `xiaomi.kettle.v20`. The property IDs may differ there, so only use it if you know they match. |
+| `--help` (`-h`), `--version` (`-v`) | Show the help or the version and exit. |
+
+### Command options
+
+Go after the command, e.g. `kettle warm 70 --dry-run`. `kettle <command> --help` shows the ones it accepts.
+
+| Option | What it does |
+|---|---|
+| `--keep [[<40-99>] <1-24>]` (`-k`) | For `boil` and `warm`: after heating, keep the water warm at that temperature for that many hours (fractions like `1.5` work). Both parts are optional: the temperature defaults to the heating target (99 °C for `boil`), the time to 1 hour, and a single value is the time. |
+| `--yes` | For `boil`, `warm` and `shell`: skip the heating confirmation. |
+| `--dry-run` | For `boil`, `warm`, `cancel`, `shell` and `provision`: print the requests, send nothing. |
+| `--timeout <seconds>` | Seconds to wait for a reply from the kettle (default: 3). |
+| `--debug` | Print the raw packets and requests. |
+
+`--yes`, `--dry-run`, `--timeout` and `--debug` can also be given to `kettle shell`, then they apply to every command typed in it.
 
 **Safety.** Heating commands refuse to start unless the kettle is a `xiaomi.kettle.v20`, idle, on its base and
 reporting no fault, and a status read that fails or is unclear never starts anything. They print exactly what they

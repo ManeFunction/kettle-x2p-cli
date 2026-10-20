@@ -483,13 +483,15 @@ def add_command_options(parser: argparse.ArgumentParser, *names: str) -> None:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    p = Parser(prog="kettle", description="Local control of the Xiaomi Smart Kettle 2 Pro.")
+    p = Parser(prog="kettle", description="Local control of the Xiaomi Smart Kettle 2 Pro.", add_help=False)
     p.set_defaults(timeout=DEFAULT_TIMEOUT, debug=False, dry_run=False, yes=False)
-    p.add_argument("-v", "--version", action="version", version=f"kettle v{version}")
-    p.add_argument("--ip", help="kettle IP address (default: the one saved by `kettle setup`)")
-    p.add_argument("--token", help="32 hex chars")
-    p.add_argument("--force-model", action="store_true",
-                   help=f"send commands even if the device is not a {EXPECTED_MODEL} (property IDs may differ)")
+    group = p.add_argument_group("call options (go before the command)")
+    group.add_argument("-h", "--help", action="help", help="show this help message and exit")
+    group.add_argument("-v", "--version", action="version", version=f"kettle v{version}")
+    group.add_argument("--ip", help="kettle IP address (default: the one saved by `kettle setup`)")
+    group.add_argument("--token", help="32 hex chars")
+    group.add_argument("--force-model", action="store_true",
+                       help=f"send commands even if the device is not a {EXPECTED_MODEL} (property IDs may differ)")
     group = p.add_argument_group("command options (go after the command)")
     for name, (flags, example, kwargs) in COMMAND_OPTIONS.items():
         if name == "set_on":
