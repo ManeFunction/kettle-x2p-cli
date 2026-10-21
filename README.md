@@ -11,7 +11,7 @@ About to send set_properties:
   (2,4) = 80
   ...
 Start heating? [y/N] y
-status: heating, 41 C, fault 0
+status: heating, 41 C, fault OK (0)
 ```
 
 Written for the EU model (BHR9107EU, `xiaomi.kettle.v20`, 1.7 L, 1800 W), tested on firmware `2.2.7_0016`.
@@ -163,8 +163,8 @@ else is rejected before it is sent.
   (the kettle silently ignores requests it cannot decrypt). Run `kettle setup` again if you re-paired it.
 - **Setup does not find the kettle**: your computer and the kettle must be on the same network (no guest network
   or VLAN between them). You can enter the IP by hand; it is in your router's client list.
-- **"kettle reports fault ..."**: check the water level and that the kettle sits on its base. Fault codes are not
-  documented by Xiaomi; `0` means none.
+- **"kettle fault: something wrong (N)"**: check the water level and that the kettle sits on its base. Fault codes are
+  not documented by Xiaomi; `OK (0)` means none.
 
 ---
 

@@ -20,6 +20,12 @@ KEEP_MIN, LIFTED, WARMING, TARGET_MODE, HEAT_MODE, BOIL_MODE = (3, 1), (3, 7), (
 STOP_ACTION = (3, 1)
 STATUS_NAMES = {0: "idle", 1: "heating", 2: "boiling", 3: "cooling down", 4: "keep warm"}
 TARGET_MODE_NAMES = {0: "heating", 1: "boiling", **{n: f"preset {n - 9}" for n in range(10, 16)}}
+# the spec has no fault list; only 0 is known. Add the low-water code here once it is confirmed on the device.
+FAULT_NAMES = {0: "OK"}
+
+
+def fault_text(code: int) -> str:
+    return f"{FAULT_NAMES.get(code, 'something wrong')} ({code})"
 
 
 class KettleError(Exception):
@@ -117,7 +123,7 @@ def cmd_status(args):
     with c:
         v = read_props(c, [STATUS, FAULT, TEMP, TARGET, AUTO_KEEP, KEEP_TEMP, KEEP_MIN, LIFTED, WARMING, TARGET_MODE])
     print(f"status       : {STATUS_NAMES.get(v[STATUS], v[STATUS])} ({v[STATUS]})")
-    print(f"fault        : {v[FAULT]}")
+    print(f"fault        : {fault_text(v[FAULT])}")
     print(f"temperature  : {v[TEMP]} C")
     print(f"target       : {v[TARGET]} C")
     print(f"keep warm    : {'on' if v[AUTO_KEEP] else 'off'} at {v[KEEP_TEMP]} C for {v[KEEP_MIN]} min")
@@ -186,7 +192,7 @@ def start_heating(args, build, label: str) -> None:
         check_model(c, cfg, args)
         v = read_props(c, [STATUS, FAULT, TEMP, LIFTED, KEEP_TEMP, KEEP_MIN])
         if v[FAULT] != 0:
-            die(f"kettle reports fault {v[FAULT]} (possibly low water); not heating")
+            die(f"kettle fault: {fault_text(v[FAULT])}; not heating")
         if v[LIFTED]:
             die("kettle is lifted off its base; not heating")
         if v[STATUS] != 0:
@@ -206,7 +212,7 @@ def start_heating(args, build, label: str) -> None:
         print("accepted. waiting 3 s then reading status...")
         time.sleep(3)
         v = read_props(c, [STATUS, FAULT, TEMP])
-    print(f"status: {STATUS_NAMES.get(v[STATUS], v[STATUS])}, {v[TEMP]} C, fault {v[FAULT]}")
+    print(f"status: {STATUS_NAMES.get(v[STATUS], v[STATUS])}, {v[TEMP]} C, fault {fault_text(v[FAULT])}")
     if v[STATUS] == 0:
         print("kettle is still idle: the batch alone did not start it. Re-run with --set-on "
               "(also writes on=true) once you are watching the kettle.")

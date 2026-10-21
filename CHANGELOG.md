@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - `-y` as a short form of `--yes`.
 
 ### Changed
+- The fault is shown as `OK (0)` or `something wrong (N)` in `status`, in the line printed after `boil`/`warm`
+  and in the refusal to heat.
 - `status` shows the target mode with its name and code, like the state: `heating (0)`, `boiling (1)`,
   `preset 1 (10)` to `preset 6 (15)`, and `unknown (N)` for any other code.
 

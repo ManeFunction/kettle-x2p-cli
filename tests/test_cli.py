@@ -173,6 +173,14 @@ class ReadCommandTests(DeviceCase):
         self.assertEqual(self.dev.props[(2, 1)], 1)  # started heating without a prompt
         self.assertIn("-y, --yes", self.cli("--help")[1])
 
+    def test_status_words_the_fault(self):
+        self.assertIn("fault        : OK (0)", self.cli("status")[1])
+        self.dev.props[(2, 2)] = 7
+        self.assertIn("fault        : something wrong (7)", self.cli("status")[1])
+        code, _, err = self.cli("boil", "--yes")
+        self.assertEqual(code, 1)
+        self.assertIn("something wrong (7)", err)
+
     def test_status_names_the_target_mode(self):
         for code, text in ((0, "heating (0)"), (1, "boiling (1)"), (10, "preset 1 (10)"),
                            (15, "preset 6 (15)"), (5, "unknown (5)"), (16, "unknown (16)")):
