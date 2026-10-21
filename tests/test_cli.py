@@ -73,7 +73,7 @@ class HeatingCommandTests(DeviceCase):
         positions = [out.index(f"\n    {n} ") for n in names]
         self.assertEqual(positions, sorted(positions))
         flags = [out.index(f"\n  {f}") for f in ("-h, --help", "-v, --version", "--ip", "--token", "--force-model",
-                                                 "-k, --keep", "--yes", "--dry-run", "--timeout", "--debug")]
+                                                 "-k, --keep", "-y, --yes", "--dry-run", "--timeout", "--debug")]
         self.assertEqual(flags, sorted(flags))
         self.assertLess(out.index("\ncall options"), out.index("\n  --ip"))
         self.assertLess(out.index("\n  --force-model"), out.index("\ncommand options"))
@@ -167,6 +167,11 @@ class ReadCommandTests(DeviceCase):
         _, out, _ = self.cli("status")
         for text in ("idle", "25 C", "water level", "target mode  : heating (0)"):
             self.assertIn(text, out)
+
+    def test_y_is_a_short_form_of_yes(self):
+        self.assertEqual(self.cli("boil", "-y")[0], 0)
+        self.assertEqual(self.dev.props[(2, 1)], 1)  # started heating without a prompt
+        self.assertIn("-y, --yes", self.cli("--help")[1])
 
     def test_status_names_the_target_mode(self):
         for code, text in ((0, "heating (0)"), (1, "boiling (1)"), (10, "preset 1 (10)"),

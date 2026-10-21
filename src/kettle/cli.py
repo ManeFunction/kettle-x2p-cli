@@ -360,7 +360,7 @@ def cmd_shell(args):
                 break
             if line in ("help", "?"):
                 print("boil [-k [[TEMP] TIME]] | warm <40-99> [-k [[TEMP] TIME]] | cancel | stop | status | info")
-                print("options go after the command: --yes skips the heating confirmation, --dry-run only prints the RPC")
+                print("options go after the command: -y/--yes skips the heating confirmation, --dry-run only prints the RPC")
                 continue
             try:
                 tokens = shlex.split(line)
@@ -398,7 +398,7 @@ DEFAULT_TIMEOUT = 3.0
 # options that go after the command: name -> (option strings, usage example, add_argument kwargs)
 COMMAND_OPTIONS = {
     "keep": (("-k", "--keep"), "boil --keep", dict(nargs="*", type=float, help=KEEP_HELP)),
-    "yes": (("--yes",), "boil --yes", dict(action="store_true", help="skip heating confirmation")),
+    "yes": (("-y", "--yes"), "boil --yes", dict(action="store_true", help="skip heating confirmation")),
     "dry_run": (("--dry-run",), "warm 70 --dry-run",
                 dict(action="store_true", help="print the RPC instead of sending")),
     "timeout": (("--timeout",), "status --timeout 5",
