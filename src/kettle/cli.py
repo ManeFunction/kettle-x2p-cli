@@ -19,6 +19,7 @@ STATUS, FAULT, TEMP, TARGET, AUTO_KEEP, KEEP_TEMP, ON = (2, 1), (2, 2), (2, 3), 
 KEEP_MIN, LIFTED, WARMING, TARGET_MODE, HEAT_MODE, BOIL_MODE = (3, 1), (3, 7), (3, 10), (3, 11), (3, 12), (3, 13)
 STOP_ACTION = (3, 1)
 STATUS_NAMES = {0: "idle", 1: "heating", 2: "boiling", 3: "cooling down", 4: "keep warm"}
+TARGET_MODE_NAMES = {0: "heating", 1: "boiling", **{n: f"preset {n - 9}" for n in range(10, 16)}}
 
 
 class KettleError(Exception):
@@ -121,7 +122,7 @@ def cmd_status(args):
     print(f"target       : {v[TARGET]} C")
     print(f"keep warm    : {'on' if v[AUTO_KEEP] else 'off'} at {v[KEEP_TEMP]} C for {v[KEEP_MIN]} min")
     print(f"warming time : {v[WARMING]} min")
-    print(f"target mode  : {v[TARGET_MODE]}")
+    print(f"target mode  : {TARGET_MODE_NAMES.get(v[TARGET_MODE], 'unknown')} ({v[TARGET_MODE]})")
     print(f"lifted       : {v[LIFTED]}")
     print("water level  : not exposed by this model (a low-water fault shows up in `fault`)")
 

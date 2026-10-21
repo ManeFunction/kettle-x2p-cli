@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
+### Changed
+- `status` shows the target mode with its name and code, like the state: `heating (0)`, `boiling (1)`,
+  `preset 1 (10)` to `preset 6 (15)`, and `unknown (N)` for any other code.
 
 ## [1.2.0] - 2026-10-20
 ### Changed

@@ -165,8 +165,16 @@ class HeatingCommandTests(DeviceCase):
 class ReadCommandTests(DeviceCase):
     def test_status(self):
         _, out, _ = self.cli("status")
-        for text in ("idle", "25 C", "water level"):
+        for text in ("idle", "25 C", "water level", "target mode  : heating (0)"):
             self.assertIn(text, out)
+
+    def test_status_names_the_target_mode(self):
+        for code, text in ((0, "heating (0)"), (1, "boiling (1)"), (10, "preset 1 (10)"),
+                           (15, "preset 6 (15)"), (5, "unknown (5)"), (16, "unknown (16)")):
+            with self.subTest(code=code):
+                self.dev.props[(3, 11)] = code
+                _, out, _ = self.cli("status")
+                self.assertIn(f"target mode  : {text}", out)
 
     def test_info_hides_the_token_and_saves_the_config(self):
         _, out, _ = self.cli("info")
