@@ -9,6 +9,7 @@ import time
 from dataclasses import dataclass
 
 from . import aes
+from .style import paint
 
 PORT = 54321
 MAGIC = 0x2131
@@ -109,7 +110,7 @@ class MiioClient:
 
     def _log(self, *a):
         if self.debug:
-            print("[miio]", *a)
+            print(paint("[miio]", "magenta"), paint(" ".join(map(str, a)), "dim"))
 
     def _roundtrip(self, packet: bytes) -> bytes:
         self._log("->", packet.hex())

@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
+### Added
+- Coloured output in a terminal: the help and usage lines (the same colours on every Python version), `status`
+  (state, fault, temperatures), heating and setup steps, warnings and errors, and `--debug` lines. Piped or
+  redirected output stays plain; `NO_COLOR=1` turns the colours off, `FORCE_COLOR=1` keeps them.
 
 ## [1.3.0] - 2026-10-21
 ### Added

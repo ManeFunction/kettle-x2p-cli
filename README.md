@@ -157,6 +157,9 @@ In `kettle shell` you type the same commands without the `kettle` prefix (`boil`
 Keep-warm time is limited by the kettle to 1-24 hours, and the target temperature to 40-99 °C; anything
 else is rejected before it is sent.
 
+Output is coloured in a terminal and plain when piped or redirected. Set `NO_COLOR=1` to turn the colours off,
+or `FORCE_COLOR=1` to keep them in a pipe.
+
 ### Troubleshooting
 
 - **"no reply from ..."**: the kettle is offline, the IP changed (`kettle find`), or the token is out of date

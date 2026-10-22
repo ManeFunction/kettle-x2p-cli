@@ -80,7 +80,7 @@ from kettle import cli, config  # noqa: E402
 
 
 class DeviceCase(unittest.TestCase):
-    """Isolated config dir, no sleeping, and every MiioClient talks to self.dev's port."""
+    """Isolated config dir, no sleeping, no colours, and every MiioClient talks to self.dev's port."""
 
     def setUp(self):
         tmp = tempfile.TemporaryDirectory()
@@ -96,6 +96,7 @@ class DeviceCase(unittest.TestCase):
         for patcher in (mock.patch.object(config, "CONFIG_PATH", self.config_path),
                         mock.patch.object(cli.time, "sleep", lambda s: None),
                         mock.patch.object(cli, "DEFAULT_TIMEOUT", 1.0),
+                        mock.patch.dict(os.environ, NO_COLOR="1"),
                         mock.patch.object(miio.MiioClient, "__init__", init)):
             patcher.start()
             self.addCleanup(patcher.stop)

@@ -3,14 +3,15 @@ from __future__ import annotations
 
 import argparse
 import copy
-import json
 import os
+import re
 import sys
 import textwrap
 import time
 
-from . import config, version
+from . import config, style, version
 from .miio import MiioClient, MiioError, MiioRpcError, discover, local_subnet
+from .style import code, coded, field, paint
 
 EXPECTED_MODEL = "xiaomi.kettle.v20"
 
@@ -19,6 +20,7 @@ STATUS, FAULT, TEMP, TARGET, AUTO_KEEP, KEEP_TEMP, ON = (2, 1), (2, 2), (2, 3), 
 KEEP_MIN, LIFTED, WARMING, TARGET_MODE, HEAT_MODE, BOIL_MODE = (3, 1), (3, 7), (3, 10), (3, 11), (3, 12), (3, 13)
 STOP_ACTION = (3, 1)
 STATUS_NAMES = {0: "idle", 1: "heating", 2: "boiling", 3: "cooling down", 4: "keep warm"}
+STATUS_COLORS = {0: "green", 1: "yellow", 2: "red", 3: "cyan", 4: "magenta"}
 TARGET_MODE_NAMES = {0: "heating", 1: "boiling", **{n: f"preset {n - 9}" for n in range(10, 16)}}
 # the spec has no fault list; only 0 is known. Add the low-water code here once it is confirmed on the device.
 FAULT_NAMES = {0: "OK"}
@@ -26,6 +28,24 @@ FAULT_NAMES = {0: "OK"}
 
 def fault_text(code: int) -> str:
     return f"{FAULT_NAMES.get(code, 'something wrong')} ({code})"
+
+
+def fault_shown(code: int) -> str:
+    """fault_text() for the screen: OK in green, anything else in red."""
+    return coded(paint(FAULT_NAMES.get(code, "something wrong"), "bold", "green" if code == 0 else "red"), code)
+
+
+def status_shown(code: int) -> str:
+    """The kettle's state by name, coloured: idle green, heating yellow, boiling red."""
+    return paint(STATUS_NAMES.get(code, code), "bold", STATUS_COLORS.get(code, "yellow"))
+
+
+def temp_shown(temp) -> str:
+    return paint(f"{temp} C", "bold")
+
+
+def dry_run_label() -> str:
+    return paint("dry-run", "bold", "yellow")
 
 
 class KettleError(Exception):
@@ -93,14 +113,15 @@ def cmd_hello(args):
     c, _ = connect(args, need_token=False)
     with c:
         h = c.handshake()
-    print(f"device id : {h.did} ({h.did:#010x})")
-    print(f"stamp     : {h.stamp}")
-    print(f"checksum  : {h.checksum.hex()}")
+    print(field("device id", f"{paint(h.did, 'bold')} {paint(f'({h.did:#010x})', 'dim')}", 9))
+    print(field("stamp", h.stamp, 9))
+    print(field("checksum", paint(h.checksum.hex(), "dim"), 9))
     if h.token:
-        print(f"TOKEN LEAKED in hello reply: {h.token.hex()}")
-        print("  (keep it private; `kettle info` will save it to the config)")
+        print(f"{paint('TOKEN LEAKED', 'bold', 'yellow')} in hello reply: {paint(h.token.hex(), 'bold')}")
+        print(code("  (keep it private; `kettle info` will save it to the config)"))
     else:
-        print("token not exposed in hello reply (zeros/ff): supply it with --token or run `kettle setup`")
+        print(style.options("token not exposed in hello reply (zeros/ff): "
+                            "supply it with --token or run `kettle setup`"))
 
 
 def cmd_info(args):
@@ -112,40 +133,43 @@ def cmd_info(args):
                 die("no token available; run `kettle setup`")
         info = get_info(c, cfg)
     shown = {k: ("<saved to config, hidden>" if k == "token" else v) for k, v in info.items()}
-    print(json.dumps(shown, indent=2))
-    print(f"\nmodel: {info.get('model')}"
-          + ("" if info.get("model") == EXPECTED_MODEL else f"   <-- differs from {EXPECTED_MODEL}"))
-    print(f"saved to {config.CONFIG_PATH}")
+    print(style.json_text(shown, indent=2))
+    print(f"\n{paint('model', 'blue')}: {paint(info.get('model'), 'bold')}"
+          + ("" if info.get("model") == EXPECTED_MODEL else paint(f"   <-- differs from {EXPECTED_MODEL}", "yellow")))
+    print(f"saved to {paint(config.CONFIG_PATH, 'cyan')}")
 
 
 def cmd_status(args):
     c, cfg = connect(args)
     with c:
         v = read_props(c, [STATUS, FAULT, TEMP, TARGET, AUTO_KEEP, KEEP_TEMP, KEEP_MIN, LIFTED, WARMING, TARGET_MODE])
-    print(f"status       : {STATUS_NAMES.get(v[STATUS], v[STATUS])} ({v[STATUS]})")
-    print(f"fault        : {fault_text(v[FAULT])}")
-    print(f"temperature  : {v[TEMP]} C")
-    print(f"target       : {v[TARGET]} C")
-    print(f"keep warm    : {'on' if v[AUTO_KEEP] else 'off'} at {v[KEEP_TEMP]} C for {v[KEEP_MIN]} min")
-    print(f"warming time : {v[WARMING]} min")
-    print(f"target mode  : {TARGET_MODE_NAMES.get(v[TARGET_MODE], 'unknown')} ({v[TARGET_MODE]})")
-    print(f"lifted       : {v[LIFTED]}")
-    print("water level  : not exposed by this model (a low-water fault shows up in `fault`)")
+    keep = paint("on", "bold", "green") if v[AUTO_KEEP] else paint("off", "dim")
+    for label, value in (
+            ("status", coded(status_shown(v[STATUS]), v[STATUS])),
+            ("fault", fault_shown(v[FAULT])),
+            ("temperature", temp_shown(v[TEMP])),
+            ("target", temp_shown(v[TARGET])),
+            ("keep warm", f"{keep} at {v[KEEP_TEMP]} C for {v[KEEP_MIN]} min"),
+            ("warming time", f"{v[WARMING]} min"),
+            ("target mode", coded(paint(TARGET_MODE_NAMES.get(v[TARGET_MODE], "unknown"), "bold"), v[TARGET_MODE])),
+            ("lifted", paint(v[LIFTED], "bold", "yellow") if v[LIFTED] else v[LIFTED]),
+            ("water level", paint("not exposed by this model (a low-water fault shows up in `fault`)", "dim"))):
+        print(field(label, value, 12))
 
 
 def show_items(items) -> None:
     for s_, p_, val in items:
-        print(f"  ({s_},{p_}) = {val!r}")
+        print(f"  {paint(f'({s_},{p_})', 'dim')} = {paint(repr(val), 'bold')}")
 
 
 def confirm(args, items) -> None:
-    print("About to send set_properties:")
+    print(paint("About to send set_properties:", "bold"))
     show_items(items)
     if args.yes:
         return
     if not sys.stdin.isatty():
         die("non-interactive: pass --yes to start heating")
-    if input("Start heating? [y/N] ").strip().lower() != "y":
+    if input(style.prompt("Start heating?", "bold", "yellow") + style.prompt(" [y/N] ", "dim")).strip().lower() != "y":
         die("aborted", 2)
 
 
@@ -184,7 +208,7 @@ def start_heating(args, build, label: str) -> None:
         items = build("<current keep temp>", "<current keep min>")
         if args.set_on:
             items.append((*ON, True))
-        print(f"dry-run, {label}: set_properties would be:")
+        print(f"{dry_run_label()}, {paint(label, 'bold')}: set_properties would be:")
         show_items(items)
         return
     c, cfg = connect(args)
@@ -199,8 +223,9 @@ def start_heating(args, build, label: str) -> None:
             die(f"kettle is not idle ({STATUS_NAMES.get(v[STATUS], v[STATUS])}); run `cancel` first")
         keep_min = min(max(v[KEEP_MIN], KEEP_MIN_LO), KEEP_MIN_HI)
         if keep_min != v[KEEP_MIN]:
-            print(f"note: keep-warm minutes {v[KEEP_MIN]} out of spec range, using {keep_min}")
-        print(f"{label}: water at {v[TEMP]} C, idle, no fault.")
+            print(style.warning(f"keep-warm minutes {v[KEEP_MIN]} out of spec range, using {keep_min}", "note:"))
+        print(f"{paint(label, 'bold')}: water at {temp_shown(v[TEMP])}, {status_shown(0)}, "
+              f"{paint('no fault', 'green')}.")
         items = build(v[KEEP_TEMP], keep_min)
         if args.set_on:
             items.append((*ON, True))
@@ -209,13 +234,14 @@ def start_heating(args, build, label: str) -> None:
         bad = [r for r in results if r.get("code") != 0]
         if bad:
             die(f"device rejected some writes: {bad}")
-        print("accepted. waiting 3 s then reading status...")
+        print(f"{paint('accepted.', 'bold', 'green')} {paint('waiting 3 s then reading status...', 'dim')}")
         time.sleep(3)
         v = read_props(c, [STATUS, FAULT, TEMP])
-    print(f"status: {STATUS_NAMES.get(v[STATUS], v[STATUS])}, {v[TEMP]} C, fault {fault_text(v[FAULT])}")
+    print(f"{paint('status', 'blue')}: {status_shown(v[STATUS])}, {temp_shown(v[TEMP])}, fault {fault_shown(v[FAULT])}")
     if v[STATUS] == 0:
-        print("kettle is still idle: the batch alone did not start it. Re-run with --set-on "
-              "(also writes on=true) once you are watching the kettle.")
+        print(paint("kettle is still idle:", "bold", "yellow")
+              + style.options(" the batch alone did not start it. Re-run with --set-on "
+                              "(also writes on=true) once you are watching the kettle."))
 
 
 def check_keep(keep, target: int):
@@ -247,18 +273,18 @@ def cmd_warm(args):
 
 def cmd_cancel(args):
     if args.dry_run:
-        print(f"dry-run, action would be: siid={STOP_ACTION[0]} aiid={STOP_ACTION[1]} in=[]")
+        print(f"{dry_run_label()}, action would be: siid={STOP_ACTION[0]} aiid={STOP_ACTION[1]} in=[]")
         return
     c, cfg = connect(args)
     with c:
         check_model(c, cfg, args)
         res = c.action(*STOP_ACTION)
-        print(f"action result: {res}")
+        print(f"{paint('action result', 'blue')}: {paint(res, 'dim')}")
         if isinstance(res, dict) and res.get("code") not in (0, None):
             die("device rejected stop-work")
         time.sleep(1)
         v = read_props(c, [STATUS, TEMP])
-    print(f"status: {STATUS_NAMES.get(v[STATUS], v[STATUS])}, {v[TEMP]} C")
+    print(f"{paint('status', 'blue')}: {status_shown(v[STATUS])}, {temp_shown(v[TEMP])}")
 
 
 def local_tz_name() -> str:
@@ -294,7 +320,7 @@ def cmd_provision(args):
         die("passwords differ; nothing was sent")
     if args.dry_run:
         shown = router_params(args.ssid, "<hidden>", args.uid, args.app_params, args.cc)
-        print(f"dry-run: miIO.config_router {json.dumps(shown)}")
+        print(f"{dry_run_label()}: miIO.config_router {style.json_text(shown)}")
         return
     # In setup mode the token is re-generated each time, so never trust the saved one here:
     # take the fresh one the kettle leaks in its hello reply.
@@ -311,10 +337,10 @@ def cmd_provision(args):
             res = c.call("miIO.config_router", params, retry=False)
         except MiioError as e:
             # The kettle drops its AP as soon as it accepts the config, so a lost reply is expected.
-            print(f"no clean reply ({e}); this is normal if the kettle dropped its AP.")
+            print(f"{paint(f'no clean reply ({e})', 'yellow')}; this is normal if the kettle dropped its AP.")
             res = None
-    print(f"device replied: {res}")
-    print("Rejoin your normal Wi-Fi, give the kettle ~30 s, then run `kettle find`.")
+    print(f"{paint('device replied', 'blue')}: {res}")
+    print(code("Rejoin your normal Wi-Fi, give the kettle ~30 s, then run `kettle find`."))
 
 
 def cmd_find(args):
@@ -323,13 +349,14 @@ def cmd_find(args):
     did = cfg.get("did") or die("no saved device id; run `kettle setup` first")
     base = (args.subnet.rsplit(".", 1)[0] if args.subnet and args.subnet.count(".") == 3
             else args.subnet) or local_subnet()
-    print(f"sweeping {base}.0/24 for device id {did} ...")
+    print(f"sweeping {paint(f'{base}.0/24', 'cyan')} for device id {paint(did, 'bold')} ...")
     found = next((ip for ip, d in discover(base) if d == did), None)
     if not found:
         die("device not found; is it online and on the same Wi-Fi/LAN as this computer?")
     cfg["ip"] = found
     config.save_config(cfg)
-    print(f"found at {found}, saved to config. Consider a DHCP reservation for it.")
+    print(f"{paint('found', 'bold', 'green')} at {paint(found, 'cyan')}, saved to config. "
+          "Consider a DHCP reservation for it.")
 
 
 def cmd_setup(args):
@@ -350,13 +377,14 @@ def cmd_shell(args):
     args._client = c
     try:
         c.handshake()
-        print(f"connected to {c.ip}. Type `help` for commands, `quit` to leave.")
+        print(f"{paint('connected', 'bold', 'green')} to {paint(c.ip, 'cyan')}. "
+              + code("Type `help` for commands, `quit` to leave."))
     except MiioError as e:
-        print(f"warning: handshake failed ({e}); commands will retry")
+        print(style.warning(f"handshake failed ({e}); commands will retry"))
     try:
         while True:
             try:
-                line = input("kettle> ").strip()
+                line = input(style.prompt("kettle>", "bold", "magenta") + " ").strip()
             except (EOFError, KeyboardInterrupt):
                 print()
                 break
@@ -365,22 +393,22 @@ def cmd_shell(args):
             if line in ("quit", "exit", "q"):
                 break
             if line in ("help", "?"):
-                print("boil [-k [[TEMP] TIME]] | warm <40-99> [-k [[TEMP] TIME]] | cancel | stop | status | info")
-                print("options go after the command: -y/--yes skips the heating confirmation, --dry-run only prints the RPC")
+                print(usage_tokens("boil [-k [[TEMP] TIME]] | warm <40-99> [-k [[TEMP] TIME]] "
+                                   "| cancel | stop | status | info", sys.stdout))
+                print(style.options("options go after the command: "
+                                    "-y/--yes skips the heating confirmation, --dry-run only prints the RPC"))
                 continue
             try:
                 tokens = shlex.split(line)
                 if tokens[0] in ("shell", "setup", "provision", "find", "hello"):
-                    print(f"`{tokens[0]}` is not available inside the shell")
+                    print(code(f"`{tokens[0]}` is not available inside the shell"))
                     continue
                 sub_args = parser.parse_args(tokens, namespace=copy.copy(args))
                 run_command(sub_args)
             except SystemExit:
                 pass  # argparse already printed its message
-            except KettleError as e:
-                print(f"error: {e}")
-            except (MiioError, OSError, ValueError) as e:
-                print(f"error: {e}")
+            except (KettleError, MiioError, OSError, ValueError) as e:
+                print(style.error(e, sys.stdout))
     finally:
         c.persistent = False
         c.close()
@@ -462,10 +490,72 @@ class HelpFormatter(argparse.HelpFormatter):
         return text.replace("\xa0", " ") + "\n\n"
 
 
+# Help colours are added to the finished plain text, so the columns argparse lines up stay intact and every Python
+# shows the same colours (3.14's argparse palette).
+USAGE_TOKEN_RE = re.compile(r"--?[a-zA-Z][\w-]*|\b[A-Z][A-Z_]*\b|\b[a-z][\w-]*")
+HELP_ENTRY_RE = re.compile(r"( {2,6})(\S+(?: \S+)*)(.*)")  # an option or command, then its help after 2+ spaces
+FLAGS_RE = re.compile(r"((?:--?[\w-]+, )*--?[\w-]+)(?: (.+))?")
+
+
+def usage_tokens(text: str, file) -> str:
+    """Options, METAVARS and positionals in a usage line."""
+    def token(m):
+        t = m.group()
+        if t.startswith("-"):
+            return style.option(t, file)
+        return paint(t, "yellow" if t.isupper() else "green", file=file)
+    return USAGE_TOKEN_RE.sub(token, text)
+
+
+def help_entry(invocation: str, file) -> str:
+    """`-k, --keep [[TEMP] TIME]`, `--ip IP` or a command name, coloured."""
+    m = FLAGS_RE.fullmatch(invocation)
+    if not m:  # a positional or a command
+        return re.sub(r"[\w-]+", lambda w: paint(w.group(), "bold", "green", file=file), invocation)
+    flags = ", ".join(style.option(f, file, bold=True) for f in m.group(1).split(", "))
+    return flags + (" " + paint(m.group(2), "bold", "yellow", file=file) if m.group(2) else "")
+
+
+def color_help(text: str, prog: str, file) -> str:
+    if not style.enabled(file):
+        return text
+    usage, rest = "", text
+    if text.startswith(f"usage: {prog}"):
+        end = text.find("\n\n")
+        usage, rest = (text, "") if end < 0 else (text[:end], text[end:])
+        usage = (f"{paint('usage:', 'bold', 'blue', file=file)} {paint(prog, 'bold', 'magenta', file=file)}"
+                 + usage_tokens(usage[len(f"usage: {prog}"):], file))
+    lines = []
+    for line in rest.split("\n"):
+        entry = HELP_ENTRY_RE.fullmatch(line)
+        if line[:1].strip() and line.endswith(":"):
+            line = paint(line, "bold", "blue", file=file)
+        elif entry:
+            line = entry.group(1) + help_entry(entry.group(2), file) + style.options(entry.group(3), file)
+        else:
+            line = style.options(line, file)
+        lines.append(line)
+    return usage + "\n".join(lines)
+
+
 class Parser(argparse.ArgumentParser):
     def __init__(self, *args, **kwargs):
         kwargs.setdefault("formatter_class", HelpFormatter)
+        if sys.version_info >= (3, 14):
+            kwargs.setdefault("color", False)  # coloured by color_help() instead
         super().__init__(*args, **kwargs)
+
+    def print_help(self, file=None):
+        file = sys.stdout if file is None else file
+        self._print_message(color_help(self.format_help(), self.prog, file), file)
+
+    def print_usage(self, file=None):
+        file = sys.stdout if file is None else file
+        self._print_message(color_help(self.format_usage(), self.prog, file), file)
+
+    def error(self, message):
+        self.print_usage(sys.stderr)
+        self.exit(2, f"{self.prog}: {style.error(message)}\n")
 
 
 class AfterCommand(argparse.Action):
@@ -543,15 +633,15 @@ def main(argv=None):
     if args.cmd is None:
         parser.print_help()
         if not config.load_config().get("token"):
-            print("\nFirst time here? Run `kettle setup`.")
+            print(f"\n{paint('First time here?', 'bold', 'yellow')} " + code("Run `kettle setup`."))
         return
     try:
         run_command(args)
     except KettleError as e:
-        print(f"error: {e}", file=sys.stderr)
+        print(style.error(e), file=sys.stderr)
         sys.exit(e.code)
     except (MiioError, OSError) as e:
-        print(f"error: {e}", file=sys.stderr)
+        print(style.error(e), file=sys.stderr)
         sys.exit(1)
 
 
