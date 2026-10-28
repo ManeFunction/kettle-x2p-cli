@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
+### Changed
+- Minimum supported Python is now 3.10 (3.9 reached end of life in October 2025).
 
 ## [1.3.1] - 2026-10-28
 ### Added

@@ -11,7 +11,7 @@ authors = [
 ]
 license = "MIT"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 keywords = ["xiaomi", "mijia", "miot", "miio", "kettle", "smart-home", "home-assistant", "cli"]
 classifiers = [
     "Programming Language :: Python :: 3",
