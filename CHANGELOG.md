@@ -17,6 +17,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   (`--dry-run` still prints the request).
 - When the kettle is still idle after `boil` or `warm`, the message depends on the water: colder than the target
   suggests `--force-on`, at or above the target says there was nothing to heat.
+- No fault is shown as `no fault (0)` (was `OK (0)`) in `status`, and the same way in the line printed before
+  heating and in the `status:` line printed after it. That line now has the same shape as the one before heating,
+  `status: water at 70 C, idle, no fault (0).`, without the word `fault` in front of the fault.
 - Minimum supported Python is now 3.10 (3.9 reached end of life in October 2025).
 
 ## [1.3.1] - 2026-10-28

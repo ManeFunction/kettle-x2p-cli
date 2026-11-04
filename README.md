@@ -6,9 +6,9 @@ your own Wi-Fi, directly to the kettle - no Xiaomi Home app and no cloud connect
 
 ```
 $ kettle warm 80 --keep 2
-warm to 80 C and keep warm at 80 C for 2 h: water at 41 C, idle, no fault.
+warm to 80 C and keep warm at 80 C for 2 h: water at 41 C, idle, no fault (0).
 Start heating? [y/N] y
-status: heating, 41 C, fault OK (0)
+status: water at 41 C, heating, no fault (0).
 ```
 
 Written for the EU model (BHR9107EU, `xiaomi.kettle.v20`, 1.7 L, 1800 W), tested on firmware `2.2.7_0016`.
@@ -166,7 +166,7 @@ or `FORCE_COLOR=1` to keep them in a pipe.
 - **Setup does not find the kettle**: your computer and the kettle must be on the same network (no guest network
   or VLAN between them). You can enter the IP by hand; it is in your router's client list.
 - **"kettle fault: something wrong (N)"**: check the water level and that the kettle sits on its base. Fault codes are
-  not documented by Xiaomi; `OK (0)` means none.
+  not documented by Xiaomi; `no fault (0)` means none.
 
 ---
 

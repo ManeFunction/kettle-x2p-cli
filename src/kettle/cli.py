@@ -23,7 +23,7 @@ STATUS_NAMES = {0: "idle", 1: "heating", 2: "boiling", 3: "cooling down", 4: "ke
 STATUS_COLORS = {0: "green", 1: "yellow", 2: "red", 3: "cyan", 4: "magenta"}
 TARGET_MODE_NAMES = {0: "heating", 1: "boiling", **{n: f"preset {n - 9}" for n in range(10, 16)}}
 # the spec has no fault list; only 0 is known. Add the low-water code here once it is confirmed on the device.
-FAULT_NAMES = {0: "OK"}
+FAULT_NAMES = {0: "no fault"}
 
 
 def fault_text(code: int) -> str:
@@ -31,7 +31,7 @@ def fault_text(code: int) -> str:
 
 
 def fault_shown(code: int) -> str:
-    """fault_text() for the screen: OK in green, anything else in red."""
+    """fault_text() for the screen: no fault in green, anything else in red."""
     return coded(paint(FAULT_NAMES.get(code, "something wrong"), "bold", "green" if code == 0 else "red"), code)
 
 
@@ -226,7 +226,7 @@ def start_heating(args, build, label: str) -> None:
         if keep_min != v[KEEP_MIN]:
             print(style.warning(f"keep-warm minutes {v[KEEP_MIN]} out of spec range, using {keep_min}", "note:"))
         print(f"{paint(label, 'bold')}: water at {temp_shown(v[TEMP])}, {status_shown(0)}, "
-              f"{paint('no fault', 'green')}.")
+              f"{fault_shown(0)}.")
         items = build(v[KEEP_TEMP], keep_min)
         if args.force_on:
             items.append((*ON, True))
@@ -238,7 +238,8 @@ def start_heating(args, build, label: str) -> None:
         print(f"{paint('accepted.', 'bold', 'green')} {paint('waiting 3 s then reading status...', 'dim')}")
         time.sleep(3)
         v = read_props(c, [STATUS, FAULT, TEMP])
-    print(f"{paint('status', 'blue')}: {status_shown(v[STATUS])}, {temp_shown(v[TEMP])}, fault {fault_shown(v[FAULT])}")
+    print(f"{paint('status', 'blue')}: water at {temp_shown(v[TEMP])}, {status_shown(v[STATUS])}, "
+          f"{fault_shown(v[FAULT])}.")
     if v[STATUS] == 0:
         target = next(val for s_, p_, val in items if (s_, p_) == TARGET)
         if v[TEMP] >= target:

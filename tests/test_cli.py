@@ -209,6 +209,11 @@ class ReadCommandTests(DeviceCase):
         self.assertIn("--force-on", out)
         self.assertNotIn("once you are watching", out)
 
+    def test_heating_messages_show_the_fault_code(self):
+        _, out, _ = self.cli("boil", "--yes")
+        self.assertIn("idle, no fault (0).", out)
+        self.assertIn("status: water at 25 C, heating, no fault (0).", out)
+
     @mock.patch("time.sleep")
     def test_idle_after_force_on_does_not_suggest_it_again(self, _):
         self.dev.starts = False
@@ -233,7 +238,7 @@ class ReadCommandTests(DeviceCase):
         self.assertIn("-y, --yes", self.cli("--help")[1])
 
     def test_status_words_the_fault(self):
-        self.assertIn("fault        : OK (0)", self.cli("status")[1])
+        self.assertIn("fault        : no fault (0)", self.cli("status")[1])
         self.dev.props[(2, 2)] = 7
         self.assertIn("fault        : something wrong (7)", self.cli("status")[1])
         code, _, err = self.cli("boil", "--yes")
