@@ -44,7 +44,7 @@ Go right after `kettle`, before the command.
 
 Go after the command, e.g. `kettle warm 70 --dry-run`. `kettle <command> --help` shows the ones it accepts.
 
-- `-k`, `--keep [[<40-99>] <1-24>]` - For `boil` and `warm`: after heating, keep the water warm at that temperature for that many hours (fractions like `1.5` work). Both parts are optional: the temperature defaults to the heating target (99 °C for `boil`), the time to 1 hour, and a single value is the time.
+- `-k`, `--keep [[<40-99>] <1-24>]` - For `boil` and `warm`: after heating, keep the water warm at that temperature for that many hours (fractions like `1.5` and `h:mm` like `1:30` work). Both parts are optional: the temperature defaults to the heating target (99 °C for `boil`), the time to 1 hour, and a single value is the time.
 - `-y`, `--yes` - For `boil`, `warm` and `shell`: skip the heating confirmation.
 - `-v`, `--verbose` - For `boil`, `warm` and `shell`: show the `set_properties` request before heating. After the command, `-v` is `--verbose`; before it, `-v` is still `--version`.
 - `-f`, `--force-on` - For `boil` and `warm`: also write `on=true` (2,7). Normally not needed: the request alone starts heating. Use it only if `kettle` reports that the kettle stayed idle although the water is colder than the target.
@@ -139,6 +139,7 @@ kettle status                  # what is it doing?
 kettle boil                    # asks for confirmation, then heats to boiling
 kettle warm 70                 # 70 °C, then stop (green tea)
 kettle warm 85 --keep 1.5      # 85 °C and keep it there for 1.5 hours
+kettle warm 85 --keep 1:30     # the same, written as hours:minutes
 kettle warm 85 -k 60 2         # 85 °C, then keep it at 60 °C for 2 hours
 kettle warm 60 --keep          # 60 °C and keep 60 °C for the default hour
 kettle boil -k 60 2            # boil, then keep at 60 °C for 2 hours

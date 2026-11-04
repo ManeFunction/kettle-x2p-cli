@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   Before the command `-v` is still `--version`.
 - `--force-on` (`-f`) for `boil` and `warm`: also writes `on=true` (2,7), for a kettle that stays idle after the
   normal request.
+- `--keep` takes the time as `h:mm` too: `--keep 1:30` is 1.5 hours.
 
 ### Changed
 - `boil` and `warm` no longer print the "About to send set_properties" block unless `--verbose` is given

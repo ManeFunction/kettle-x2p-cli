@@ -253,6 +253,23 @@ def start_heating(args, build, label: str) -> None:
                   + style.options(f" the batch alone did not start it.{hint}"))
 
 
+HOURS_MINUTES_RE = re.compile(r"(\d+):(\d\d)")
+
+
+def keep_value(text: str) -> float:
+    """A --keep value as a number: `1.5` (hours or degrees) or `1:30` (hours:minutes, 1:30 = 1.5 hours)."""
+    m = HOURS_MINUTES_RE.fullmatch(text)
+    if m:
+        hours, minutes = int(m.group(1)), int(m.group(2))
+        if minutes > 59:
+            raise argparse.ArgumentTypeError(f"invalid time {text!r}: minutes must be 00-59")
+        return hours + minutes / 60
+    try:
+        return float(text)
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"invalid value {text!r} (use a number like 1.5 or hours:minutes like 1:30)")
+
+
 def check_keep(keep, target: int):
     """--keep [[TEMP] TIME] -> (temp, minutes) or None. TIME is in hours. Missing TEMP is the heating target,
     missing TIME is 1 h."""
@@ -434,14 +451,14 @@ def run_command(args) -> None:
 
 
 KEEP_HELP = (f"then keep warm at TEMP C ({TEMP_MIN}-{TEMP_MAX}) for TIME hours ({KEEP_MIN_LO // 60}-{KEEP_MIN_HI // 60}, "
-             f"e.g. 1.5); TEMP defaults to the heating target, TIME to {KEEP_MIN_LO // 60}. "
+             f"e.g. 1.5 or 1:30); TEMP defaults to the heating target, TIME to {KEEP_MIN_LO // 60}. "
              f"Without it the kettle stops after heating")
 
 
 DEFAULT_TIMEOUT = 3.0
 # options that go after the command: name -> (option strings, usage example, add_argument kwargs)
 COMMAND_OPTIONS = {
-    "keep": (("-k", "--keep"), "boil --keep", dict(nargs="*", type=float, help=KEEP_HELP)),
+    "keep": (("-k", "--keep"), "boil --keep", dict(nargs="*", type=keep_value, help=KEEP_HELP)),
     "yes": (("-y", "--yes"), "boil --yes", dict(action="store_true", help="skip heating confirmation")),
     "verbose": (("-v", "--verbose"), "boil --verbose",
                 dict(action="store_true", help="show the set_properties request before heating")),

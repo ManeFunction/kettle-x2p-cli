@@ -48,6 +48,24 @@ class HeatingCommandTests(DeviceCase):
         self.cli("boil", "-k", "1.5", "--yes")
         self.assertEqual(self.dev.writes[0][-1], (3, 13, "99,1,99,90"))
 
+    def test_keep_time_takes_hours_and_minutes(self):
+        for text, minutes in (("1:30", 90), ("2:00", 120), ("1:20", 80), ("24:00", 1440), ("01:05", 65)):
+            with self.subTest(time=text):
+                self.dev.writes.clear()
+                self.dev.props[(2, 1)] = 0
+                self.assertEqual(self.cli("boil", "-k", text, "--yes")[0], 0)
+                self.assertEqual(self.dev.writes[0][-1], (3, 13, f"99,1,99,{minutes}"))
+
+    def test_keep_temp_and_hours_minutes_together(self):
+        self.cli("warm", "90", "-k", "60", "2:15", "--yes")
+        self.assertEqual(self.dev.writes[0][-1], (3, 12, "90,1,60,135"))
+
+    def test_bad_hours_and_minutes_are_rejected(self):
+        for text in ("1:60", "1:5", "0:30", "24:01", "1:30:00", "1:", ":30", "abc"):
+            with self.subTest(time=text):
+                self.assertNotEqual(self.cli("boil", "-k", text, "--yes")[0], 0)
+        self.assertEqual(self.dev.writes, [])
+
     def test_a_single_keep_value_outside_1_24_hours_is_rejected(self):
         for argv in (["boil", "-k", "0.5"], ["warm", "90", "-k", "25"], ["boil", "-k", "55"], ["boil", "-k", "0"]):
             with self.subTest(argv=argv):
