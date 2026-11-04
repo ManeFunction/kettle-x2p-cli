@@ -1,3 +1,3 @@
 """Local control of the Xiaomi Smart Kettle 2 Pro over the LAN."""
 
-version = "1.3.1"
+version = "1.4.0"

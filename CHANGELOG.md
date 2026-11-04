@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
+
+## [1.4.0] - 2026-11-04
 ### Added
 - `--verbose` (`-v`) after the command (`boil`, `warm`, `shell`) shows the "About to send set_properties" request.
   Before the command `-v` is still `--version`.
