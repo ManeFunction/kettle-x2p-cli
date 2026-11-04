@@ -20,6 +20,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - No fault is shown as `no fault (0)` (was `OK (0)`) in `status`, and the same way in the line printed before
   heating and in the `status:` line printed after it. That line now has the same shape as the one before heating,
   `status: water at 70 C, idle, no fault (0).`, without the word `fault` in front of the fault.
+- The heating state shows its target, `heating to 70 C`, in `status` and in the line printed after `boil`/`warm`.
+  Only the word `heating` is coloured.
 - Minimum supported Python is now 3.10 (3.9 reached end of life in October 2025).
 
 ## [1.3.1] - 2026-10-28

@@ -86,6 +86,11 @@ class ColouredCliTests(DeviceCase):
                      "    \x1b[1;32mcancel\x1b[0m | \x1b[1;32mstop\x1b[0m"):
             self.assertIn(part, out)
 
+    def test_only_the_word_heating_is_coloured(self):
+        self.dev.props.update({(2, 1): 1, (2, 4): 70})
+        out = self.coloured("status")[1]
+        self.assertIn("\x1b[1;33mheating\x1b[0m to 70 C \x1b[2m(1)\x1b[0m", out)
+
     def test_status_and_errors(self):
         self.dev.props[(2, 2)] = 7
         out = self.coloured("status")[1]

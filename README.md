@@ -8,7 +8,7 @@ your own Wi-Fi, directly to the kettle - no Xiaomi Home app and no cloud connect
 $ kettle warm 80 --keep 2
 warm to 80 C and keep warm at 80 C for 2 h: water at 41 C, idle, no fault (0).
 Start heating? [y/N] y
-status: water at 41 C, heating, no fault (0).
+status: water at 41 C, heating to 80 C, no fault (0).
 ```
 
 Written for the EU model (BHR9107EU, `xiaomi.kettle.v20`, 1.7 L, 1800 W), tested on firmware `2.2.7_0016`.

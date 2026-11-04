@@ -35,9 +35,11 @@ def fault_shown(code: int) -> str:
     return coded(paint(FAULT_NAMES.get(code, "something wrong"), "bold", "green" if code == 0 else "red"), code)
 
 
-def status_shown(code: int) -> str:
-    """The kettle's state by name, coloured: idle green, heating yellow, boiling red."""
-    return paint(STATUS_NAMES.get(code, code), "bold", STATUS_COLORS.get(code, "yellow"))
+def status_shown(code: int, target=None) -> str:
+    """The kettle's state by name, coloured: idle green, heating yellow, boiling red. With a target, heating
+    reads `heating to 70 C` (only the word is coloured)."""
+    name = paint(STATUS_NAMES.get(code, code), "bold", STATUS_COLORS.get(code, "yellow"))
+    return f"{name} to {target} C" if code == 1 and target is not None else name
 
 
 def temp_shown(temp) -> str:
@@ -145,7 +147,7 @@ def cmd_status(args):
         v = read_props(c, [STATUS, FAULT, TEMP, TARGET, AUTO_KEEP, KEEP_TEMP, KEEP_MIN, LIFTED, WARMING, TARGET_MODE])
     keep = paint("on", "bold", "green") if v[AUTO_KEEP] else paint("off", "dim")
     for label, value in (
-            ("status", coded(status_shown(v[STATUS]), v[STATUS])),
+            ("status", coded(status_shown(v[STATUS], v[TARGET]), v[STATUS])),
             ("fault", fault_shown(v[FAULT])),
             ("temperature", temp_shown(v[TEMP])),
             ("target", temp_shown(v[TARGET])),
@@ -238,10 +240,10 @@ def start_heating(args, build, label: str) -> None:
         print(f"{paint('accepted.', 'bold', 'green')} {paint('waiting 3 s then reading status...', 'dim')}")
         time.sleep(3)
         v = read_props(c, [STATUS, FAULT, TEMP])
-    print(f"{paint('status', 'blue')}: water at {temp_shown(v[TEMP])}, {status_shown(v[STATUS])}, "
+    target = next(val for s_, p_, val in items if (s_, p_) == TARGET)
+    print(f"{paint('status', 'blue')}: water at {temp_shown(v[TEMP])}, {status_shown(v[STATUS], target)}, "
           f"{fault_shown(v[FAULT])}.")
     if v[STATUS] == 0:
-        target = next(val for s_, p_, val in items if (s_, p_) == TARGET)
         if v[TEMP] >= target:
             print(paint("kettle did not start:", "bold", "yellow")
                   + style.options(f" the water is already at {v[TEMP]} C."))
