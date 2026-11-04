@@ -7,9 +7,6 @@ your own Wi-Fi, directly to the kettle - no Xiaomi Home app and no cloud connect
 ```
 $ kettle warm 80 --keep 2
 warm to 80 C and keep warm at 80 C for 2 h: water at 41 C, idle, no fault.
-About to send set_properties:
-  (2,4) = 80
-  ...
 Start heating? [y/N] y
 status: heating, 41 C, fault OK (0)
 ```
@@ -52,15 +49,16 @@ Go after the command, e.g. `kettle warm 70 --dry-run`. `kettle <command> --help`
 |---|---|
 | `--keep [[<40-99>] <1-24>]` (`-k`) | For `boil` and `warm`: after heating, keep the water warm at that temperature for that many hours (fractions like `1.5` work). Both parts are optional: the temperature defaults to the heating target (99 °C for `boil`), the time to 1 hour, and a single value is the time. |
 | `--yes` (`-y`) | For `boil`, `warm` and `shell`: skip the heating confirmation. |
+| `--verbose` (`-v`) | For `boil`, `warm` and `shell`: show the `set_properties` request before heating. After the command, `-v` is `--verbose`; before it, `-v` is still `--version`. |
 | `--dry-run` | For `boil`, `warm`, `cancel`, `shell` and `provision`: print the requests, send nothing. |
 | `--timeout <seconds>` | Seconds to wait for a reply from the kettle (default: 3). |
 | `--debug` | Print the raw packets and requests. |
 
-`--yes`, `--dry-run`, `--timeout` and `--debug` can also be given to `kettle shell`, then they apply to every command typed in it.
+`--yes`, `--verbose`, `--dry-run`, `--timeout` and `--debug` can also be given to `kettle shell`, then they apply to every command typed in it.
 
 **Safety.** Heating commands refuse to start unless the kettle is a `xiaomi.kettle.v20`, idle, on its base and
-reporting no fault, and a status read that fails or is unclear never starts anything. They print exactly what they
-will send and ask `y/N` (without a terminal, `--yes` is required). This model has no water-level reading, so a
+reporting no fault, and a status read that fails or is unclear never starts anything. They ask `y/N` (add `--verbose`
+to see exactly what they will send) (without a terminal, `--yes` is required). This model has no water-level reading, so a
 low-water condition only shows up as a fault code. Heat water remotely only when you know the kettle has water in it.
 
 ---

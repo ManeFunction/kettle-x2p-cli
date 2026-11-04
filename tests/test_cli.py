@@ -73,7 +73,7 @@ class HeatingCommandTests(DeviceCase):
         positions = [out.index(f"\n    {n} ") for n in names]
         self.assertEqual(positions, sorted(positions))
         flags = [out.index(f"\n  {f}") for f in ("-h, --help", "-v, --version", "--ip", "--token", "--force-model",
-                                                 "-k, --keep", "-y, --yes", "--dry-run", "--timeout", "--debug")]
+                                                 "-k, --keep", "-y, --yes", "-v, --verbose", "--dry-run", "--timeout", "--debug")]
         self.assertEqual(flags, sorted(flags))
         self.assertLess(out.index("\ncall options"), out.index("\n  --ip"))
         self.assertLess(out.index("\n  --force-model"), out.index("\ncommand options"))
@@ -82,18 +82,18 @@ class HeatingCommandTests(DeviceCase):
     def test_command_help_lists_its_options_in_the_command_block(self):
         _, out, _ = self.cli("warm", "--help")
         block = out[out.index("command options"):]
-        for flag in ("-k, --keep", "--yes", "--dry-run", "--timeout", "--debug", "--set-on"):
+        for flag in ("-k, --keep", "--yes", "--dry-run", "--timeout", "--debug", "-v, --verbose", "--set-on"):
             self.assertIn(flag, block)
         self.assertNotIn("--ip", out)
 
     def test_usage_shows_command_options_behind_the_command(self):
         _, out, _ = self.cli("--help")
         usage = " ".join(out.split("\n\n")[0].split())
-        self.assertIn("command [--keep [[TEMP] TIME]] [--yes] [--dry-run] [--timeout TIMEOUT] [--debug] ...", usage)
+        self.assertIn("command [--keep [[TEMP] TIME]] [--yes] [--verbose] [--dry-run] [--timeout TIMEOUT] [--debug] ...", usage)
         self.assertNotIn("[--yes] [--dry-run] [--timeout TIMEOUT] [--debug] [--force-model]", usage)
         _, out, _ = self.cli("warm", "--help")
         usage = " ".join(out.split("\n\n")[0].split())
-        self.assertIn("warm [--help] temp [--keep [[TEMP] TIME]] [--yes] [--dry-run] [--timeout TIMEOUT] [--debug] [--set-on]", usage)
+        self.assertIn("warm [--help] temp [--keep [[TEMP] TIME]] [--yes] [--verbose] [--dry-run] [--timeout TIMEOUT] [--debug] [--set-on]", usage)
 
     def test_usage_on_error_uses_long_options(self):
         for argv in (["bogus"], ["warm"], ["--yes", "boil"]):
@@ -167,6 +167,28 @@ class ReadCommandTests(DeviceCase):
         _, out, _ = self.cli("status")
         for text in ("idle", "25 C", "water level", "target mode  : heating (0)"):
             self.assertIn(text, out)
+
+    def test_request_is_hidden_without_verbose(self):
+        code, out, _ = self.cli("boil", "--yes")
+        self.assertEqual(code, 0)
+        self.assertNotIn("About to send set_properties", out)
+        self.assertNotIn("(2,4)", out)
+
+    def test_request_is_shown_with_verbose(self):
+        code, out, _ = self.cli("boil", "--yes", "-v")
+        self.assertEqual(code, 0)
+        self.assertIn("About to send set_properties", out)
+        self.assertIn("(2,4) = 99", out)
+
+    def test_request_is_shown_with_long_verbose(self):
+        _, out, _ = self.cli("warm", "70", "--yes", "--verbose")
+        self.assertIn("About to send set_properties", out)
+        self.assertIn("(2,4) = 70", out)
+
+    def test_verbose_before_the_command_points_to_the_right_place(self):
+        code, _, err = self.cli("--verbose", "boil")
+        self.assertEqual(code, 2)
+        self.assertIn("goes after the command", err)
 
     def test_y_is_a_short_form_of_yes(self):
         self.assertEqual(self.cli("boil", "-y")[0], 0)

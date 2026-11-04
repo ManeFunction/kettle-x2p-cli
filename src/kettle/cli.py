@@ -163,8 +163,9 @@ def show_items(items) -> None:
 
 
 def confirm(args, items) -> None:
-    print(paint("About to send set_properties:", "bold"))
-    show_items(items)
+    if args.verbose:
+        print(paint("About to send set_properties:", "bold"))
+        show_items(items)
     if args.yes:
         return
     if not sys.stdin.isatty():
@@ -396,7 +397,8 @@ def cmd_shell(args):
                 print(usage_tokens("boil [-k [[TEMP] TIME]] | warm <40-99> [-k [[TEMP] TIME]] "
                                    "| cancel | stop | status | info", sys.stdout))
                 print(style.options("options go after the command: "
-                                    "-y/--yes skips the heating confirmation, --dry-run only prints the RPC"))
+                                    "-y/--yes skips the heating confirmation, --dry-run only prints the RPC, "
+                                    "-v/--verbose shows the request before heating"))
                 continue
             try:
                 tokens = shlex.split(line)
@@ -433,6 +435,8 @@ DEFAULT_TIMEOUT = 3.0
 COMMAND_OPTIONS = {
     "keep": (("-k", "--keep"), "boil --keep", dict(nargs="*", type=float, help=KEEP_HELP)),
     "yes": (("-y", "--yes"), "boil --yes", dict(action="store_true", help="skip heating confirmation")),
+    "verbose": (("-v", "--verbose"), "boil --verbose",
+                dict(action="store_true", help="show the set_properties request before heating")),
     "dry_run": (("--dry-run",), "warm 70 --dry-run",
                 dict(action="store_true", help="print the RPC instead of sending")),
     "timeout": (("--timeout",), "status --timeout 5",
@@ -441,7 +445,7 @@ COMMAND_OPTIONS = {
     "set_on": (("--set-on",), "boil --set-on", dict(action="store_true", help="also write on=true (2,7)")),
 }
 # these may also be given to `kettle shell` and then apply to every command typed in it
-SESSION_OPTIONS = ("yes", "dry_run", "timeout", "debug")
+SESSION_OPTIONS = ("yes", "verbose", "dry_run", "timeout", "debug")
 
 
 class HelpFormatter(argparse.HelpFormatter):
@@ -457,6 +461,8 @@ class HelpFormatter(argparse.HelpFormatter):
         # Python < 3.13 repeats the metavar after every option string (`-k [..], --keep [..]`)
         if action.dest == "keep" and action.option_strings:
             return f"{', '.join(action.option_strings)} {self._format_args(action, None)}"
+        if action.dest == "verbose":  # -v is not registered before the command (it is --version there)
+            return "-v, --verbose"
         return super()._format_action_invocation(action)
 
     def _usage_part(self, action) -> str:
@@ -581,7 +587,7 @@ def add_command_options(parser: argparse.ArgumentParser, *names: str) -> None:
 
 def build_parser() -> argparse.ArgumentParser:
     p = Parser(prog="kettle", description="Local control of the Xiaomi Smart Kettle 2 Pro.", add_help=False)
-    p.set_defaults(timeout=DEFAULT_TIMEOUT, debug=False, dry_run=False, yes=False)
+    p.set_defaults(timeout=DEFAULT_TIMEOUT, debug=False, dry_run=False, yes=False, verbose=False)
     group = p.add_argument_group("call options (go before the command)")
     group.add_argument("-h", "--help", action="help", help="show this help message and exit")
     group.add_argument("-v", "--version", action="version", version=f"kettle v{version}")
@@ -594,6 +600,7 @@ def build_parser() -> argparse.ArgumentParser:
         if name == "set_on":
             continue
         nargs = 0 if kwargs.get("action") == "store_true" else kwargs.get("nargs")
+        flags = tuple(f for f in flags if f != "-v")  # before the command -v is --version (shown in help below)
         group.add_argument(*flags, action=AfterCommand, example=example, nargs=nargs, default=argparse.SUPPRESS,
                            help=kwargs["help"]).after_command = True
     sub = p.add_subparsers(dest="cmd", metavar="command")
@@ -604,10 +611,10 @@ def build_parser() -> argparse.ArgumentParser:
     info = sub.add_parser("info", help="miIO.info; saves ip/token/did/model to config")
     add_command_options(info, "timeout", "debug")
     boil = sub.add_parser("boil", help="heat to boiling")
-    add_command_options(boil, "keep", "yes", "dry_run", "timeout", "debug", "set_on")
+    add_command_options(boil, "keep", "yes", "verbose", "dry_run", "timeout", "debug", "set_on")
     w = sub.add_parser("warm", help="heat to TEMP C")
     w.add_argument("temp", type=int, help=f"{TEMP_MIN}-{TEMP_MAX} C")
-    add_command_options(w, "keep", "yes", "dry_run", "timeout", "debug", "set_on")
+    add_command_options(w, "keep", "yes", "verbose", "dry_run", "timeout", "debug", "set_on")
     cancel = sub.add_parser("cancel", aliases=["stop"], help="stop heating / keep-warm")
     sub._choices_actions[-1].metavar = "cancel | stop"  # argparse would list it as `cancel (stop)`
     add_command_options(cancel, "dry_run", "timeout", "debug")

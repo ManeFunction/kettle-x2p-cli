@@ -6,7 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
+### Added
+- `--verbose` (`-v`) after the command (`boil`, `warm`, `shell`) shows the "About to send set_properties" request.
+  Before the command `-v` is still `--version`.
+
 ### Changed
+- `boil` and `warm` no longer print the "About to send set_properties" block unless `--verbose` is given
+  (`--dry-run` still prints the request).
 - Minimum supported Python is now 3.10 (3.9 reached end of life in October 2025).
 
 ## [1.3.1] - 2026-10-28
