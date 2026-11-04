@@ -50,6 +50,7 @@ Go after the command, e.g. `kettle warm 70 --dry-run`. `kettle <command> --help`
 | `--keep [[<40-99>] <1-24>]` (`-k`) | For `boil` and `warm`: after heating, keep the water warm at that temperature for that many hours (fractions like `1.5` work). Both parts are optional: the temperature defaults to the heating target (99 °C for `boil`), the time to 1 hour, and a single value is the time. |
 | `--yes` (`-y`) | For `boil`, `warm` and `shell`: skip the heating confirmation. |
 | `--verbose` (`-v`) | For `boil`, `warm` and `shell`: show the `set_properties` request before heating. After the command, `-v` is `--verbose`; before it, `-v` is still `--version`. |
+| `--force-on` (`-f`) | For `boil` and `warm`: also write `on=true` (2,7). Normally not needed: the request alone starts heating. Use it only if `kettle` reports that the kettle stayed idle although the water is colder than the target. |
 | `--dry-run` | For `boil`, `warm`, `cancel`, `shell` and `provision`: print the requests, send nothing. |
 | `--timeout <seconds>` | Seconds to wait for a reply from the kettle (default: 3). |
 | `--debug` | Print the raw packets and requests. |

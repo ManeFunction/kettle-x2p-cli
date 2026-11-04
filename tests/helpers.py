@@ -28,6 +28,7 @@ class FakeDevice(threading.Thread):
         self.props = {(2, 1): 0, (2, 2): 0, (2, 3): 25, (2, 4): 40, (2, 5): False, (2, 6): 40,
                       (2, 7): False, (3, 1): 1440, (3, 7): False, (3, 10): 0, (3, 11): 0}
         self.props.update(props or {})
+        self.starts = True  # False: a write leaves the kettle idle
         self.seen, self.writes, self.actions = [], [], []
         self.start()
 
@@ -57,7 +58,8 @@ class FakeDevice(threading.Thread):
                 self.writes.append([(i["siid"], i["piid"], i["value"]) for i in params])
                 for i in params:
                     self.props[(i["siid"], i["piid"])] = i["value"]
-                self.props[(2, 1)] = 1  # starts heating
+                if self.starts:
+                    self.props[(2, 1)] = 1  # starts heating
                 res = [{"siid": i["siid"], "piid": i["piid"], "code": 0} for i in params]
             elif method == "action":
                 self.actions.append((params["siid"], params["aiid"]))

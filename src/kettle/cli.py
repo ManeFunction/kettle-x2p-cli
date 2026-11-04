@@ -207,7 +207,7 @@ def start_heating(args, build, label: str) -> None:
     build(keep_temp, keep_min) -> items. On --dry-run nothing is sent (no network at all)."""
     if args.dry_run:
         items = build("<current keep temp>", "<current keep min>")
-        if args.set_on:
+        if args.force_on:
             items.append((*ON, True))
         print(f"{dry_run_label()}, {paint(label, 'bold')}: set_properties would be:")
         show_items(items)
@@ -228,7 +228,7 @@ def start_heating(args, build, label: str) -> None:
         print(f"{paint(label, 'bold')}: water at {temp_shown(v[TEMP])}, {status_shown(0)}, "
               f"{paint('no fault', 'green')}.")
         items = build(v[KEEP_TEMP], keep_min)
-        if args.set_on:
+        if args.force_on:
             items.append((*ON, True))
         confirm(args, items)
         results = c.set_properties(items)
@@ -240,9 +240,14 @@ def start_heating(args, build, label: str) -> None:
         v = read_props(c, [STATUS, FAULT, TEMP])
     print(f"{paint('status', 'blue')}: {status_shown(v[STATUS])}, {temp_shown(v[TEMP])}, fault {fault_shown(v[FAULT])}")
     if v[STATUS] == 0:
-        print(paint("kettle is still idle:", "bold", "yellow")
-              + style.options(" the batch alone did not start it. Re-run with --set-on "
-                              "(also writes on=true) once you are watching the kettle."))
+        target = next(val for s_, p_, val in items if (s_, p_) == TARGET)
+        if v[TEMP] >= target:
+            print(paint("kettle did not start:", "bold", "yellow")
+                  + style.options(f" the water is already at {v[TEMP]} C."))
+        else:
+            hint = "" if args.force_on else " Re-run with --force-on (also writes on=true)."
+            print(paint("kettle is still idle:", "bold", "yellow")
+                  + style.options(f" the batch alone did not start it.{hint}"))
 
 
 def check_keep(keep, target: int):
@@ -437,12 +442,14 @@ COMMAND_OPTIONS = {
     "yes": (("-y", "--yes"), "boil --yes", dict(action="store_true", help="skip heating confirmation")),
     "verbose": (("-v", "--verbose"), "boil --verbose",
                 dict(action="store_true", help="show the set_properties request before heating")),
+    "force_on": (("-f", "--force-on"), "boil --force-on",
+                 dict(action="store_true",
+                      help="also write on=true (2,7), if the request alone leaves the kettle idle")),
     "dry_run": (("--dry-run",), "warm 70 --dry-run",
                 dict(action="store_true", help="print the RPC instead of sending")),
     "timeout": (("--timeout",), "status --timeout 5",
                 dict(type=float, help=f"seconds to wait for a reply (default: {DEFAULT_TIMEOUT:g})")),
     "debug": (("--debug",), "status --debug", dict(action="store_true", help="print raw packets and RPC")),
-    "set_on": (("--set-on",), "boil --set-on", dict(action="store_true", help="also write on=true (2,7)")),
 }
 # these may also be given to `kettle shell` and then apply to every command typed in it
 SESSION_OPTIONS = ("yes", "verbose", "dry_run", "timeout", "debug")
@@ -587,7 +594,7 @@ def add_command_options(parser: argparse.ArgumentParser, *names: str) -> None:
 
 def build_parser() -> argparse.ArgumentParser:
     p = Parser(prog="kettle", description="Local control of the Xiaomi Smart Kettle 2 Pro.", add_help=False)
-    p.set_defaults(timeout=DEFAULT_TIMEOUT, debug=False, dry_run=False, yes=False, verbose=False)
+    p.set_defaults(timeout=DEFAULT_TIMEOUT, debug=False, dry_run=False, yes=False, verbose=False, force_on=False)
     group = p.add_argument_group("call options (go before the command)")
     group.add_argument("-h", "--help", action="help", help="show this help message and exit")
     group.add_argument("-v", "--version", action="version", version=f"kettle v{version}")
@@ -597,8 +604,6 @@ def build_parser() -> argparse.ArgumentParser:
                        help=f"send commands even if the device is not a {EXPECTED_MODEL} (property IDs may differ)")
     group = p.add_argument_group("command options (go after the command)")
     for name, (flags, example, kwargs) in COMMAND_OPTIONS.items():
-        if name == "set_on":
-            continue
         nargs = 0 if kwargs.get("action") == "store_true" else kwargs.get("nargs")
         flags = tuple(f for f in flags if f != "-v")  # before the command -v is --version (shown in help below)
         group.add_argument(*flags, action=AfterCommand, example=example, nargs=nargs, default=argparse.SUPPRESS,
@@ -611,10 +616,10 @@ def build_parser() -> argparse.ArgumentParser:
     info = sub.add_parser("info", help="miIO.info; saves ip/token/did/model to config")
     add_command_options(info, "timeout", "debug")
     boil = sub.add_parser("boil", help="heat to boiling")
-    add_command_options(boil, "keep", "yes", "verbose", "dry_run", "timeout", "debug", "set_on")
+    add_command_options(boil, "keep", "yes", "verbose", "force_on", "dry_run", "timeout", "debug")
     w = sub.add_parser("warm", help="heat to TEMP C")
     w.add_argument("temp", type=int, help=f"{TEMP_MIN}-{TEMP_MAX} C")
-    add_command_options(w, "keep", "yes", "verbose", "dry_run", "timeout", "debug", "set_on")
+    add_command_options(w, "keep", "yes", "verbose", "force_on", "dry_run", "timeout", "debug")
     cancel = sub.add_parser("cancel", aliases=["stop"], help="stop heating / keep-warm")
     sub._choices_actions[-1].metavar = "cancel | stop"  # argparse would list it as `cancel (stop)`
     add_command_options(cancel, "dry_run", "timeout", "debug")

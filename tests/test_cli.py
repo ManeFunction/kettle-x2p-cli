@@ -73,7 +73,7 @@ class HeatingCommandTests(DeviceCase):
         positions = [out.index(f"\n    {n} ") for n in names]
         self.assertEqual(positions, sorted(positions))
         flags = [out.index(f"\n  {f}") for f in ("-h, --help", "-v, --version", "--ip", "--token", "--force-model",
-                                                 "-k, --keep", "-y, --yes", "-v, --verbose", "--dry-run", "--timeout", "--debug")]
+                                                 "-k, --keep", "-y, --yes", "-v, --verbose", "-f, --force-on", "--dry-run", "--timeout", "--debug")]
         self.assertEqual(flags, sorted(flags))
         self.assertLess(out.index("\ncall options"), out.index("\n  --ip"))
         self.assertLess(out.index("\n  --force-model"), out.index("\ncommand options"))
@@ -82,18 +82,18 @@ class HeatingCommandTests(DeviceCase):
     def test_command_help_lists_its_options_in_the_command_block(self):
         _, out, _ = self.cli("warm", "--help")
         block = out[out.index("command options"):]
-        for flag in ("-k, --keep", "--yes", "--dry-run", "--timeout", "--debug", "-v, --verbose", "--set-on"):
+        for flag in ("-k, --keep", "--yes", "--dry-run", "--timeout", "--debug", "-v, --verbose", "-f, --force-on"):
             self.assertIn(flag, block)
         self.assertNotIn("--ip", out)
 
     def test_usage_shows_command_options_behind_the_command(self):
         _, out, _ = self.cli("--help")
         usage = " ".join(out.split("\n\n")[0].split())
-        self.assertIn("command [--keep [[TEMP] TIME]] [--yes] [--verbose] [--dry-run] [--timeout TIMEOUT] [--debug] ...", usage)
+        self.assertIn("command [--keep [[TEMP] TIME]] [--yes] [--verbose] [--force-on] [--dry-run] [--timeout TIMEOUT] [--debug] ...", usage)
         self.assertNotIn("[--yes] [--dry-run] [--timeout TIMEOUT] [--debug] [--force-model]", usage)
         _, out, _ = self.cli("warm", "--help")
         usage = " ".join(out.split("\n\n")[0].split())
-        self.assertIn("warm [--help] temp [--keep [[TEMP] TIME]] [--yes] [--verbose] [--dry-run] [--timeout TIMEOUT] [--debug] [--set-on]", usage)
+        self.assertIn("warm [--help] temp [--keep [[TEMP] TIME]] [--yes] [--verbose] [--force-on] [--dry-run] [--timeout TIMEOUT] [--debug]", usage)
 
     def test_usage_on_error_uses_long_options(self):
         for argv in (["bogus"], ["warm"], ["--yes", "boil"]):
@@ -189,6 +189,43 @@ class ReadCommandTests(DeviceCase):
         code, _, err = self.cli("--verbose", "boil")
         self.assertEqual(code, 2)
         self.assertIn("goes after the command", err)
+
+    def test_force_on_adds_on_true(self):
+        for flag in ("--force-on", "-f"):
+            with self.subTest(flag=flag):
+                self.dev.writes.clear()
+                self.dev.props[(2, 1)] = 0
+                self.assertEqual(self.cli("boil", "--yes", flag)[0], 0)
+                self.assertEqual(self.dev.writes[0][-1], (2, 7, True))
+        self.dev.props[(2, 1)] = 0
+        self.cli("boil", "--yes")
+        self.assertNotIn((2, 7, True), self.dev.writes[-1])
+
+    @mock.patch("time.sleep")
+    def test_idle_after_start_below_target_suggests_force_on(self, _):
+        self.dev.starts = False
+        _, out, _ = self.cli("boil", "--yes")  # water 25 C, target 99 C
+        self.assertIn("kettle is still idle", out)
+        self.assertIn("--force-on", out)
+        self.assertNotIn("once you are watching", out)
+
+    @mock.patch("time.sleep")
+    def test_idle_after_force_on_does_not_suggest_it_again(self, _):
+        self.dev.starts = False
+        _, out, _ = self.cli("boil", "--yes", "--force-on")
+        self.assertIn("kettle is still idle", out)
+        self.assertNotIn("Re-run", out)
+
+    @mock.patch("time.sleep")
+    def test_idle_at_or_above_target_says_water_is_warm_enough(self, _):
+        self.dev.starts = False
+        self.dev.props[(2, 3)] = 45
+        for target in (40, 45):  # warmer than, and equal to, the target
+            with self.subTest(target=target):
+                _, out, _ = self.cli("warm", str(target), "--yes")
+                self.assertIn("kettle did not start", out)
+                self.assertIn("already at 45 C", out)
+                self.assertNotIn("still idle", out)
 
     def test_y_is_a_short_form_of_yes(self):
         self.assertEqual(self.cli("boil", "-y")[0], 0)
