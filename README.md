@@ -34,26 +34,23 @@ made just for fun... or not. Setting a kettle right from the Terminal while work
 
 Go right after `kettle`, before the command.
 
-| Option | What it does |
-|---|---|
-| `--ip <address>` | Kettle IP address (default: the one saved by `kettle setup`). |
-| `--token <32 hex>` | Kettle token (default: the saved one). |
-| `--force-model` | Send commands even to a model other than `xiaomi.kettle.v20`. The property IDs may differ there, so only use it if you know they match. |
-| `--help` (`-h`), `--version` (`-v`) | Show the help or the version and exit. |
+- `--ip <address>` - Kettle IP address (default: the one saved by `kettle setup`).
+- `--token <32 hex>` - Kettle token (default: the saved one).
+- `--force-model` - Send commands even to a model other than `xiaomi.kettle.v20`. The property IDs may differ there, so only use it if you know they match.
+- `-h`, `--help` - Show the help and exit.
+- `-v`, `--version` - Show the version and exit.
 
 ### Command options
 
 Go after the command, e.g. `kettle warm 70 --dry-run`. `kettle <command> --help` shows the ones it accepts.
 
-| Option | What it does |
-|---|---|
-| `--keep [[<40-99>] <1-24>]` (`-k`) | For `boil` and `warm`: after heating, keep the water warm at that temperature for that many hours (fractions like `1.5` work). Both parts are optional: the temperature defaults to the heating target (99 °C for `boil`), the time to 1 hour, and a single value is the time. |
-| `--yes` (`-y`) | For `boil`, `warm` and `shell`: skip the heating confirmation. |
-| `--verbose` (`-v`) | For `boil`, `warm` and `shell`: show the `set_properties` request before heating. After the command, `-v` is `--verbose`; before it, `-v` is still `--version`. |
-| `--force-on` (`-f`) | For `boil` and `warm`: also write `on=true` (2,7). Normally not needed: the request alone starts heating. Use it only if `kettle` reports that the kettle stayed idle although the water is colder than the target. |
-| `--dry-run` | For `boil`, `warm`, `cancel`, `shell` and `provision`: print the requests, send nothing. |
-| `--timeout <seconds>` | Seconds to wait for a reply from the kettle (default: 3). |
-| `--debug` | Print the raw packets and requests. |
+- `-k`, `--keep [[<40-99>] <1-24>]` - For `boil` and `warm`: after heating, keep the water warm at that temperature for that many hours (fractions like `1.5` work). Both parts are optional: the temperature defaults to the heating target (99 °C for `boil`), the time to 1 hour, and a single value is the time.
+- `-y`, `--yes` - For `boil`, `warm` and `shell`: skip the heating confirmation.
+- `-v`, `--verbose` - For `boil`, `warm` and `shell`: show the `set_properties` request before heating. After the command, `-v` is `--verbose`; before it, `-v` is still `--version`.
+- `-f`, `--force-on` - For `boil` and `warm`: also write `on=true` (2,7). Normally not needed: the request alone starts heating. Use it only if `kettle` reports that the kettle stayed idle although the water is colder than the target.
+- `--dry-run` - For `boil`, `warm`, `cancel`, `shell` and `provision`: print the requests, send nothing.
+- `--timeout <seconds>` - Seconds to wait for a reply from the kettle (default: 3).
+- `--debug` - Print the raw packets and requests.
 
 `--yes`, `--verbose`, `--dry-run`, `--timeout` and `--debug` can also be given to `kettle shell`, then they apply to every command typed in it.
 
