@@ -168,5 +168,5 @@ jobs:
         with:
           token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
           tap: ManeFunction/homebrew-tap
-          formula: kettle
+          formula: kettle-x2p-cli
           no_fork: "true"

@@ -73,13 +73,13 @@ low-water condition only shows up as a fault code. Heat water remotely only when
       The tool is built and tested for macOS and Linux; it should work on Windows too, but that is untested.
     - After confirmation, install **kettle** through the [PyPI](https://pypi.org/project/kettle-x2p-cli) package
       manager, typing `pip install kettle-x2p-cli` in the Terminal. For Mac users, you may need to use `pip3`
-      instead of `pip`. The package is called `kettle-x2p-cli`; the command it installs is `kettle`.
+      instead of `pip`.
     - Verify the installation with `kettle --version`.
     - You are perfect, you can use the app with `kettle` from any folder in your system.
 2) **brew (Recommended for Mac and Linux users)**
     - Type `brew tap manefunction/tap` in your Terminal to add my custom tap (app source) to your brew sources,
       if you haven't already.
-    - Type `brew install kettle` to install the application itself.
+    - Type `brew install kettle-x2p-cli` to install the application itself.
     - Verify the installation with `kettle --version`.
     - You are perfect, you can use the app with `kettle` from any folder in your system.
 3) **Python package (manual installation, for advanced users)**
