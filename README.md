@@ -15,8 +15,6 @@ Written for the EU model (BHR9107EU, `xiaomi.kettle.v20`, 1.7 L, 1800 W), tested
 It has no dependencies except Python itself. This is the standalone tool and a documented protocol reference ([SPEC.md](https://github.com/ManeFunction/kettle-x2p-cli/blob/main/SPEC.md))
 made just for fun... or not. Setting a kettle right from the Terminal while working is pretty neat, actually :)
 
----
-
 ## Features
 
 | Command | What it does |
@@ -59,8 +57,6 @@ reporting no fault, and a status read that fails or is unclear never starts anyt
 to see exactly what they will send) (without a terminal, `--yes` is required). This model has no water-level reading, so a
 low-water condition only shows up as a fault code. Heat water remotely only when you know the kettle has water in it.
 
----
-
 ## Installation
 
 **kettle** is available from a variety of sources.
@@ -100,8 +96,6 @@ Updates arrive with `pip install --upgrade kettle-x2p-cli` or `brew upgrade`. Yo
 (`~/.config/kettle/`), so upgrading or reinstalling never loses them. (`pip` may ask you to use a virtual environment or `pipx` on newer
 systems; `pipx install kettle-x2p-cli` is a good fit for a command line tool.)
 
----
-
 ## First-time setup
 
 Run `kettle setup` and follow the instructions on the screen. It takes about five minutes the first time and is
@@ -129,8 +123,6 @@ On firmware `2.2.7` the kettle changes that token when it joins your Wi-Fi, so t
 setup mode stops working afterwards. I tried the alternatives (including the app's own extra provisioning parameters,
 `kettle provision --app-params`); none gave a usable token without the cloud. After the one-time extraction,
 all control is local. If you re-pair or reset the kettle, the token changes and you run `kettle setup` again.
-
----
 
 ## Usage
 
@@ -166,16 +158,12 @@ or `FORCE_COLOR=1` to keep them in a pipe.
 - **"kettle fault: something wrong (N)"**: check the water level and that the kettle sits on its base. Fault codes are
   not documented by Xiaomi; `no fault (0)` means none.
 
----
-
 ## How it works
 
 The kettle speaks Xiaomi's *miio* protocol over UDP port 54321: a hello handshake that returns the device id and
 a timestamp, then JSON-RPC calls encrypted with AES-128-CBC keyed from the token. Its functions are described by
 a MIoT spec (service/property numbers); the ones used here are listed in [SPEC.md](https://github.com/ManeFunction/kettle-x2p-cli/blob/main/SPEC.md). The client is a few hundred
 lines of standard-library Python, including its own AES, and handles re-handshakes and timestamp drift by itself.
-
----
 
 ## Development
 
@@ -187,8 +175,6 @@ python3 -m venv .venv && .venv/bin/pip install -e .
 The tests run against a fake kettle on the loopback interface that speaks the real wire format; nothing touches a
 real device. The release workflow checks that the tag matches `src/kettle/__init__.py`, builds the package and
 publishes it to PyPI and creates the GitHub release; the Homebrew formula is bumped automatically.
-
----
 
 ## Credits
 
