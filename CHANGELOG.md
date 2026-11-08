@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.4.1] - 2026-11-08
+### Changed
+- The Homebrew formula is renamed to `kettle-x2p-cli` (as on PyPI), because `kettle` is taken in homebrew-core:
+  use `brew install kettle-x2p-cli`. The installed command is still `kettle`.
+
 ## [1.4.0] - 2026-11-04
 ### Added
 - `--verbose` (`-v`) after the command (`boil`, `warm`, `shell`) shows the "About to send set_properties" request.
